@@ -17,7 +17,17 @@ const roomManager = new RoomManager(io, {
   motd: "MOTD: Match data resets every round. Host can kick, rebalance, and replay without rebuilding the room."
 });
 
-app.use(express.static(path.join(__dirname, "..", "public")));
+const publicDir = path.join(__dirname, "..", "public");
+
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
+
+app.get("/game", (_req, res) => {
+  res.sendFile(path.join(publicDir, "game.html"));
+});
+
+app.use(express.static(publicDir));
 
 app.get("/api/health", (_req, res) => {
   res.json({
