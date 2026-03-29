@@ -33,7 +33,8 @@ For Render:
 - Create a new Web Service from this repo
 - Choose `Docker` as the environment
 - Render will use the repo-root [Dockerfile](/home/mrinall-samal/Projects/Games/headshot/Dockerfile)
-- Exposed port is `3000`
+- Keep the service as a `Web Service`
+- Let Render provide its runtime `PORT` env var automatically
 
 ## Controls
 
