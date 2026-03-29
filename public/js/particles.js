@@ -30,7 +30,7 @@ export class ParticlePool {
         death: "#ff3344",
         heal: "#00ff88",
         pickup: options.color || "#ffffff",
-        dust: "#94a3b8"
+        dust: options.color || "#94a3b8"
       };
       this.items.push({
         type,
@@ -89,10 +89,14 @@ export class ParticlePool {
     this.items = this.items.filter((particle) => particle.life > 0);
   }
 
-  draw(ctx, camera) {
+  drawWorld(ctx, camera) {
     for (const particle of this.items) {
+      if (particle.type === "killConfirm") continue;
       const x = particle.x - camera.x;
       const y = particle.y - camera.y;
+      if (x < -50 || x > ctx.canvas.width + 50 || y < -50 || y > ctx.canvas.height + 50) {
+        continue;
+      }
       const alpha = particle.life / particle.maxLife;
       if (particle.type === "number") {
         ctx.save();
@@ -107,18 +111,6 @@ export class ParticlePool {
         ctx.restore();
         continue;
       }
-      if (particle.type === "killConfirm") {
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, alpha * 1.4);
-        ctx.fillStyle = "#00ff88";
-        ctx.font = "bold 22px 'Share Tech Mono', monospace";
-        ctx.textAlign = "center";
-        ctx.shadowColor = "#00ff88";
-        ctx.shadowBlur = 8;
-        ctx.fillText("+1 KILL", particle.x, particle.y);
-        ctx.restore();
-        continue;
-      }
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.fillStyle = particle.color;
@@ -130,6 +122,22 @@ export class ParticlePool {
         ctx.lineWidth = 2;
         ctx.stroke();
       }
+      ctx.restore();
+    }
+  }
+
+  drawScreen(ctx) {
+    for (const particle of this.items) {
+      if (particle.type !== "killConfirm") continue;
+      const alpha = particle.life / particle.maxLife;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, alpha * 1.4);
+      ctx.fillStyle = "#00ff88";
+      ctx.font = "bold 22px 'Share Tech Mono', monospace";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "#00ff88";
+      ctx.shadowBlur = 8;
+      ctx.fillText("+1 KILL", particle.x, particle.y);
       ctx.restore();
     }
   }

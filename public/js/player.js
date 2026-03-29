@@ -49,10 +49,56 @@ export class PlayerSprite {
     ctx.strokeStyle = ring;
     ctx.stroke();
 
+    if (snapshot.armor > 0) {
+      const armorFraction = snapshot.armor / snapshot.maxArmor;
+      ctx.save();
+      ctx.globalAlpha = 0.18 + armorFraction * 0.25;
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.arc(x, y, 24 + armorFraction * 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    if (snapshot.speedBoostUntil && snapshot.speedBoostUntil > Date.now()) {
+      ctx.save();
+      const pulseAlpha = 0.3 + 0.3 * Math.sin(Date.now() / 120);
+      ctx.globalAlpha = pulseAlpha;
+      ctx.strokeStyle = "#c084fc";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x, y, 26, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.fillStyle = "#ffffff";
     ctx.font = "12px 'Share Tech Mono', monospace";
     ctx.textAlign = "center";
     ctx.fillText(snapshot.name, x, y - 34);
+
+    if (snapshot.killStreak >= 3) {
+      const streakColor = snapshot.killStreak >= 7 ? "#facc15" : snapshot.killStreak >= 5 ? "#fb923c" : "#f87171";
+      const streakText = snapshot.killStreak >= 7 ? `🔥${snapshot.killStreak}` : `★${snapshot.killStreak}`;
+      ctx.save();
+      ctx.fillStyle = streakColor;
+      ctx.font = "10px 'Share Tech Mono', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(streakText, x, y - 46);
+      ctx.restore();
+    }
+
+    if (snapshot.speedBoostUntil && snapshot.speedBoostUntil > Date.now()) {
+      ctx.save();
+      ctx.fillStyle = "#c084fc";
+      ctx.font = "14px 'Share Tech Mono', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("⚡", x + 28, y - 34);
+      ctx.restore();
+    }
 
     const hpWidth = 44;
     ctx.fillStyle = "rgba(0,0,0,0.5)";

@@ -46,6 +46,7 @@ For Render:
 - `Enter`: chat
 - `Tab`: scoreboard while alive, spectate-cycle while dead
 - `Esc`: settings
+- `F`: toggle fullscreen
 - `M`: mute
 
 ## Features

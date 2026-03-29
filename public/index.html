@@ -3,89 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HEADSHOT :: Lobby</title>
+  <title>HEADSHOT :: Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/lobby.css">
+  <link rel="stylesheet" href="/css/style.css?v=20260329d">
+  <link rel="stylesheet" href="/css/lobby.css?v=20260329d">
 </head>
-<body class="scanlines">
-  <main class="landing-shell">
-    <section id="landingView" class="panel landing-panel">
-      <div class="brand-block">
-        <div class="eyebrow">Browser Multiplayer 2.5D Shooter</div>
-        <h1>HEADSHOT</h1>
-        <p class="subcopy">Zero-install firefights. Private rooms, public quick play, 60 FPS canvas combat.</p>
-      </div>
+<body class="scanlines deadshot-menu-body">
+  <main class="deadshot-shell">
+    <header class="menu-topbar panel">
+      <section class="menu-update-card">
+        <div class="menu-label">Latest Update</div>
+        <div id="motdBanner" class="menu-update-copy">Live service online. Browser combat ready.</div>
+        <button id="howToBtn" class="menu-ghost-btn" type="button">Patch Notes</button>
+      </section>
 
-      <div class="form-grid">
-        <label>
-          Callsign
-          <input id="playerNameInput" type="text" maxlength="16" autocomplete="off" placeholder="Player_0000">
-        </label>
-        <label>
-          Join Code
-          <input id="joinCodeInput" type="text" maxlength="6" autocomplete="off" placeholder="GX7K2P">
-        </label>
-      </div>
+      <section class="menu-brand-panel">
+        <div class="menu-brand">HEAD<span>SHOT</span></div>
+        <nav class="menu-nav">
+          <button class="menu-tab active" type="button">Play Game</button>
+          <button class="menu-tab" type="button" data-coming-soon="settings">Settings</button>
+          <button class="menu-tab" type="button" data-coming-soon="shop">Shop</button>
+          <button class="menu-tab" type="button" data-coming-soon="locker">Locker</button>
+          <button class="menu-tab" type="button" data-coming-soon="leaderboard">Leaderboard</button>
+        </nav>
+      </section>
 
-      <div class="color-picker-row">
-        <span>Color</span>
-        <div id="colorPicker" class="color-picker"></div>
-      </div>
+      <section class="menu-profile-card">
+        <button class="menu-signin-btn" type="button" data-coming-soon="signin">Profile / Sign In</button>
+      </section>
+    </header>
 
-      <div class="landing-actions">
-        <button id="quickPlayBtn" class="primary">Quick Play</button>
-        <button id="createRoomBtn">Create Private Room</button>
-        <button id="joinRoomBtn">Join Room</button>
-        <button id="howToBtn">How To Play</button>
-      </div>
+    <section id="landingView" class="menu-view landing-view panel">
+      <aside class="menu-side-left">
+        <div class="menu-side-card">
+          <div class="menu-section-title">Daily Challenges</div>
+          <div class="challenge-tabs">
+            <button class="challenge-tab active" type="button">Daily</button>
+            <button class="challenge-tab" type="button">Weekly</button>
+          </div>
+          <p class="challenge-copy">Log in later to unlock challenge tracking, win streaks, and seasonal contracts.</p>
+        </div>
 
-      <div id="mobileHint" class="hint" hidden>Touch devices can spectate and move, but keyboard and mouse are recommended.</div>
-      <div id="motdBanner" class="motd-banner"></div>
+        <div class="menu-side-card">
+          <div class="menu-section-title">Career Snapshot</div>
+          <div id="lifetimeStatsHost" class="career-copy">No matches logged yet. Deploy to build your record.</div>
+          <div id="mobileHint" class="hint compact-hint" hidden>Touch controls are supported, but keyboard and mouse remain the best way to play.</div>
+        </div>
+
+        <div class="menu-community-card">
+          <div class="menu-section-title">Join The Community</div>
+          <button class="discord-btn" type="button" data-coming-soon="discord">Discord</button>
+        </div>
+      </aside>
+
+      <section class="menu-center-stage">
+        <div class="stage-atmosphere">
+          <div class="loadout-slot left-slot"></div>
+          <div class="operator-showcase" aria-hidden="true">
+            <div class="operator-rifle"></div>
+            <div class="operator-head"></div>
+            <div class="operator-body"></div>
+            <div class="operator-legs"></div>
+          </div>
+          <div class="loadout-slot right-slot"></div>
+          <div class="loadout-slot far-right-slot"></div>
+        </div>
+
+        <section class="play-console">
+          <div class="play-console-head">
+            <div class="menu-label">Live Deployment</div>
+            <p class="play-console-copy">Jump straight into matchmaking or spin up a private room for squad runs and custom rules.</p>
+          </div>
+
+          <div class="identity-grid">
+            <label class="identity-field">
+              Callsign
+              <input id="playerNameInput" type="text" maxlength="16" autocomplete="off" placeholder="Player_0000">
+            </label>
+            <label class="identity-field">
+              Join Code
+              <input id="joinCodeInput" type="text" maxlength="6" autocomplete="off" placeholder="GX7K2P">
+            </label>
+          </div>
+
+          <div class="color-picker-row">
+            <span>Operator Color</span>
+            <div id="colorPicker" class="color-picker"></div>
+          </div>
+
+          <button id="quickPlayBtn" class="hero-play-btn" type="button">Play</button>
+
+          <div class="play-secondary-row">
+            <button id="createRoomBtn" type="button">Private</button>
+            <button id="joinRoomBtn" type="button">Join</button>
+          </div>
+
+          <div class="play-footer-row">
+            <button id="landingHowToBtn" class="menu-ghost-btn" type="button">How To Play</button>
+            <div class="online-copy">Instant rooms. Zero install. Full browser combat.</div>
+          </div>
+        </section>
+      </section>
     </section>
 
-    <section id="lobbyView" class="panel lobby-panel" hidden>
-      <div class="lobby-header">
+    <section id="lobbyView" class="menu-view lobby-view panel" hidden>
+      <div class="lobby-hero">
         <div>
-          <div class="eyebrow">Room</div>
+          <div class="menu-label">Private / Squad Room</div>
           <h2 id="roomCodeLabel">------</h2>
+          <div class="lobby-meta-row">
+            <div id="lobbyPingBadge" class="lobby-ping-badge">
+              <span id="lobbyPingDot" class="ping-dot"></span>
+              <span id="lobbyPingMs">— ms</span>
+            </div>
+            <span id="hostBadge" class="host-chip">Host controls</span>
+            <span id="lobbyStatusText" class="status-chip">Waiting</span>
+          </div>
         </div>
         <div class="lobby-header-actions">
-          <button id="copyRoomBtn" class="primary">Copy Code</button>
-          <button id="shareLinkBtn">Share Link</button>
-          <button id="leaveLobbyBtn">Leave</button>
+          <button id="copyRoomBtn" class="primary" type="button">Copy Code</button>
+          <button id="shareLinkBtn" type="button">Share Link</button>
+          <button id="leaveLobbyBtn" type="button">Leave</button>
         </div>
       </div>
 
       <div class="lobby-columns">
-        <section class="panel inset">
+        <section class="panel inset roster-panel">
           <div class="section-head">
-            <h3>Players</h3>
-            <span id="lobbyStatusText">Waiting</span>
-          </div>
-          <div class="team-columns">
             <div>
+              <div class="menu-section-title">Deployment Roster</div>
+              <p class="section-copy">Rebalance teams, review readiness, and kick stragglers before launch.</p>
+            </div>
+          </div>
+
+          <div class="team-columns">
+            <div class="team-card red-team-card">
               <h4>Team Red</h4>
               <div id="teamRedList" class="player-list"></div>
             </div>
-            <div>
+            <div class="team-card blue-team-card">
               <h4>Team Blue</h4>
               <div id="teamBlueList" class="player-list"></div>
             </div>
-            <div>
+            <div class="team-card solo-team-card">
               <h4>Free For All / Spectators</h4>
               <div id="teamSoloList" class="player-list"></div>
             </div>
           </div>
         </section>
 
-        <section class="panel inset">
+        <section class="panel inset settings-panel">
           <div class="section-head">
-            <h3>Match Settings</h3>
-            <span id="hostBadge">Host controls</span>
+            <div>
+              <div class="menu-section-title">Room Rules</div>
+              <p class="section-copy">Dial the map, mode, and combat rules before the squad drops in.</p>
+            </div>
           </div>
+
           <div id="settingsGrid" class="settings-grid">
             <label>Mode <select id="settingMode"><option value="ffa">FFA</option><option value="tdm">TDM</option><option value="koth">KOTH</option></select></label>
             <label>Map <select id="settingMap"><option value="warehouse">Warehouse</option><option value="city">City Block</option><option value="bunker">Bunker</option></select></label>
@@ -98,34 +174,48 @@
             <label>Pickups <select id="settingPickups"><option value="true" selected>On</option><option value="false">Off</option></select></label>
             <label>Regen <select id="settingRegen"><option value="true" selected>On</option><option value="false">Off</option></select></label>
           </div>
+          <div id="modeDescHost" class="mode-desc-host"></div>
 
           <div class="lobby-actions">
-            <button id="readyBtn">Toggle Ready</button>
-            <button id="startGameBtn" class="primary">Start Game</button>
+            <button id="readyBtn" type="button">Toggle Ready</button>
+            <button id="startGameBtn" class="hero-play-btn compact" type="button">Start Match</button>
           </div>
+
           <div id="lobbyMotd" class="motd-banner"></div>
         </section>
       </div>
     </section>
   </main>
 
+  <div id="queueOverlay" class="overlay-card queue-overlay" hidden>
+    <div class="modal-card queue-card">
+      <div id="queueTitle" class="queue-title">Matchmaking</div>
+      <div id="queueSubtitle" class="queue-subtitle">Securing a room and syncing operators...</div>
+      <div class="queue-spinner" aria-hidden="true"></div>
+    </div>
+  </div>
+
   <div id="howToModal" class="modal-shell" hidden>
     <div class="modal-card">
       <h2>How To Play</h2>
       <ul class="plain-list">
         <li>Move with <strong>WASD</strong> or arrow keys.</li>
-        <li>Aim with the mouse and hold left click to fire.</li>
-        <li>Press <strong>R</strong> to reload, <strong>Enter</strong> to chat, <strong>Esc</strong> for settings.</li>
-        <li>Sniper scope uses right click or <strong>Z</strong>.</li>
-        <li>Pickups spawn across the map for health, armor, ammo, and speed.</li>
+        <li>Aim with the mouse and hold <strong>left click</strong> to fire.</li>
+        <li>Press <strong>R</strong> to reload, <strong>1–8</strong> to switch guns.</li>
+        <li>Press <strong>Enter</strong> to chat with <strong>[T]</strong> for team only.</li>
+        <li>Press <strong>Esc</strong> for settings and <strong>Tab</strong> for the scoreboard.</li>
+        <li>Sniper scope uses <strong>right click</strong> or <strong>Z</strong>.</li>
+        <li>Pickups: health cross (green), armor shield (blue), ammo (yellow), speed bolt (purple).</li>
+        <li>Regen starts 5 seconds after taking damage and restores up to 70 HP.</li>
+        <li>On mobile: left half moves, right half aims, red button fires.</li>
       </ul>
       <div class="modal-actions">
-        <button id="closeHowToBtn" class="primary">Close</button>
+        <button id="closeHowToBtn" class="primary" type="button">Close</button>
       </div>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="/js/lobby.js"></script>
+  <script type="module" src="/js/lobby.js?v=20260329d"></script>
 </body>
 </html>

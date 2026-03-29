@@ -2,6 +2,7 @@ import {
   createSocket,
   emitAck,
   loadProfile,
+  loadLifetimeStats,
   saveProfile,
   loadSession,
   saveSession,
@@ -17,6 +18,7 @@ const socket = createSocket();
 let profile = loadProfile();
 let currentRoom = null;
 let currentPlayer = null;
+let lobbyPingTimer = null;
 
 const refs = {
   landingView: document.getElementById("landingView"),
@@ -27,8 +29,10 @@ const refs = {
   quickPlayBtn: document.getElementById("quickPlayBtn"),
   createRoomBtn: document.getElementById("createRoomBtn"),
   joinRoomBtn: document.getElementById("joinRoomBtn"),
+  landingHowToBtn: document.getElementById("landingHowToBtn"),
   howToBtn: document.getElementById("howToBtn"),
   mobileHint: document.getElementById("mobileHint"),
+  lifetimeStatsHost: document.getElementById("lifetimeStatsHost"),
   colorPicker: document.getElementById("colorPicker"),
   roomCodeLabel: document.getElementById("roomCodeLabel"),
   copyRoomBtn: document.getElementById("copyRoomBtn"),
@@ -53,7 +57,11 @@ const refs = {
   settingHp: document.getElementById("settingHp"),
   settingFriendlyFire: document.getElementById("settingFriendlyFire"),
   settingPickups: document.getElementById("settingPickups"),
-  settingRegen: document.getElementById("settingRegen")
+  settingRegen: document.getElementById("settingRegen"),
+  modeDescHost: document.getElementById("modeDescHost"),
+  queueOverlay: document.getElementById("queueOverlay"),
+  queueTitle: document.getElementById("queueTitle"),
+  queueSubtitle: document.getElementById("queueSubtitle")
 };
 
 const modeDescriptions = {
@@ -93,15 +101,59 @@ function syncSettingsToDom(settings) {
 
 function renderModeDescription() {
   let desc = document.getElementById("modeDesc");
-  if (!desc) {
+  if (!desc || desc.parentElement !== refs.modeDescHost) {
+    if (desc) desc.remove();
     desc = document.createElement("p");
     desc.id = "modeDesc";
-    desc.style.color = "#94a3b8";
-    desc.style.fontSize = "0.8rem";
-    desc.style.marginTop = "0.5rem";
-    refs.settingMode.parentElement.appendChild(desc);
+    desc.style.cssText = "color:#94a3b8;font-size:0.8rem;margin:0;line-height:1.5;";
+    refs.modeDescHost.appendChild(desc);
   }
   desc.textContent = modeDescriptions[refs.settingMode.value] || "";
+}
+
+function renderLifetimeStats() {
+  const stats = loadLifetimeStats();
+  let element = document.getElementById("lifetimeStats");
+  if (!stats.matches) {
+    element?.remove();
+    if (refs.lifetimeStatsHost) {
+      refs.lifetimeStatsHost.textContent = "No matches logged yet. Deploy to build your record.";
+    }
+    return;
+  }
+  if (!element) {
+    element = document.createElement("div");
+    element.id = "lifetimeStats";
+    element.style.cssText = "color:#cbd5e1;font-size:0.78rem;line-height:1.6;";
+    refs.lifetimeStatsHost.innerHTML = "";
+    refs.lifetimeStatsHost.appendChild(element);
+  }
+  const kd = stats.deaths ? (stats.kills / stats.deaths).toFixed(2) : stats.kills || 0;
+  element.textContent = `Career: ${stats.matches} matches · ${stats.kills || 0} kills · ${stats.deaths || 0} deaths · K/D ${kd} · ${(stats.damage || 0).toLocaleString()} damage`;
+}
+
+function showQueueOverlay(title, subtitle) {
+  refs.queueTitle.textContent = title;
+  refs.queueSubtitle.textContent = subtitle;
+  refs.queueOverlay.hidden = false;
+}
+
+function hideQueueOverlay() {
+  refs.queueOverlay.hidden = true;
+}
+
+function refreshQueueOverlay(room) {
+  if (!room?.publicRoom || room.status === "playing") {
+    hideQueueOverlay();
+    return;
+  }
+  const players = room.players.filter((player) => !player.spectator).length;
+  showQueueOverlay(
+    "Matchmaking",
+    players >= 2
+      ? `Match found. Syncing ${players} operators and deploying to ${room.settings.mapId.toUpperCase()}...`
+      : `Searching for operators... ${players}/${room.settings.maxPlayers} ready in queue.`
+  );
 }
 
 function renderColors() {
@@ -155,6 +207,7 @@ function showLobby(room, player) {
   syncSettingsToDom(room.settings);
   renderLobbyPlayers(room);
   updateLobbyControls(room);
+  refreshQueueOverlay(room);
   setJoinCodeInUrl(room.publicRoom ? "" : room.code);
 }
 
@@ -163,6 +216,7 @@ function resetToLanding() {
   currentPlayer = null;
   refs.landingView.hidden = false;
   refs.lobbyView.hidden = true;
+  hideQueueOverlay();
   clearSession();
   setJoinCodeInUrl("");
 }
@@ -223,8 +277,15 @@ function renderLobbyPlayers(room) {
 function updateLobbyControls(room) {
   const isHost = room.hostId === currentPlayer?.token;
   refs.hostBadge.textContent = isHost ? "You are the host" : "Host controls locked";
-  refs.lobbyStatusText.textContent = `${room.players.length}/${room.settings.maxPlayers} players`;
+  refs.lobbyStatusText.textContent = room.publicRoom
+    ? `${room.players.length}/${room.settings.maxPlayers} queued`
+    : `${room.players.length}/${room.settings.maxPlayers} in room`;
   refs.startGameBtn.disabled = !isHost || !room.canStart;
+  refs.startGameBtn.title = !isHost
+    ? "Only the host can start"
+    : !room.canStart
+      ? "Waiting for all players to ready up"
+      : "Start the match";
   refs.readyBtn.disabled = isHost || room.publicRoom;
 
   for (const element of [
@@ -249,26 +310,38 @@ function navigateToGame(room, player) {
 }
 
 async function createRoom() {
-  const response = await emitAck(socket, "room:create", {
-    ...roomSessionPayload(),
-    settings: selectedSettingsFromDom()
-  });
-  currentPlayer = response.player;
-  profile.playerToken = response.player.token;
-  profile.playerName = response.player.name;
-  saveProfile(profile);
-  saveRoomSession(response.room, response.player);
-  showLobby(response.room, response.player);
+  showQueueOverlay("Deploying Private Room", "Provisioning a private lobby and synchronizing room rules...");
+  try {
+    const response = await emitAck(socket, "room:create", {
+      ...roomSessionPayload(),
+      settings: selectedSettingsFromDom()
+    });
+    currentPlayer = response.player;
+    profile.playerToken = response.player.token;
+    profile.playerName = response.player.name;
+    saveProfile(profile);
+    saveRoomSession(response.room, response.player);
+    showLobby(response.room, response.player);
+  } catch (error) {
+    hideQueueOverlay();
+    throw error;
+  }
 }
 
 async function quickPlay() {
-  const response = await emitAck(socket, "room:quickplay", roomSessionPayload());
-  currentPlayer = response.player;
-  profile.playerToken = response.player.token;
-  profile.playerName = response.player.name;
-  saveProfile(profile);
-  saveRoomSession(response.room, response.player);
-  showLobby(response.room, response.player);
+  showQueueOverlay("Matchmaking", "Searching for an active public combat room...");
+  try {
+    const response = await emitAck(socket, "room:quickplay", roomSessionPayload());
+    currentPlayer = response.player;
+    profile.playerToken = response.player.token;
+    profile.playerName = response.player.name;
+    saveProfile(profile);
+    saveRoomSession(response.room, response.player);
+    showLobby(response.room, response.player);
+  } catch (error) {
+    hideQueueOverlay();
+    throw error;
+  }
 }
 
 async function joinRoom() {
@@ -277,20 +350,26 @@ async function joinRoom() {
     showToast("Enter a room code first", "error");
     return;
   }
-  const response = await emitAck(socket, "room:join", {
-    ...roomSessionPayload(),
-    code
-  });
-  currentPlayer = response.player;
-  profile.playerToken = response.player.token;
-  profile.playerName = response.player.name;
-  saveProfile(profile);
-  saveRoomSession(response.room, response.player);
-  if (response.room.status === "playing") {
-    navigateToGame(response.room, response.player);
-    return;
+  showQueueOverlay("Joining Room", `Authenticating team code ${code} and downloading the current room state...`);
+  try {
+    const response = await emitAck(socket, "room:join", {
+      ...roomSessionPayload(),
+      code
+    });
+    currentPlayer = response.player;
+    profile.playerToken = response.player.token;
+    profile.playerName = response.player.name;
+    saveProfile(profile);
+    saveRoomSession(response.room, response.player);
+    if (response.room.status === "playing") {
+      navigateToGame(response.room, response.player);
+      return;
+    }
+    showLobby(response.room, response.player);
+  } catch (error) {
+    hideQueueOverlay();
+    throw error;
   }
-  showLobby(response.room, response.player);
 }
 
 function bindEvents() {
@@ -299,6 +378,9 @@ function bindEvents() {
   refs.quickPlayBtn.addEventListener("click", () => quickPlay().catch((error) => showToast(error.message, "error")));
   refs.createRoomBtn.addEventListener("click", () => createRoom().catch((error) => showToast(error.message, "error")));
   refs.joinRoomBtn.addEventListener("click", () => joinRoom().catch((error) => showToast(error.message, "error")));
+  refs.landingHowToBtn?.addEventListener("click", () => {
+    refs.howToModal.hidden = false;
+  });
   refs.copyRoomBtn.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(currentRoom.code);
@@ -324,8 +406,10 @@ function bindEvents() {
     ready: !currentRoom.players.find((player) => player.token === currentPlayer.token)?.ready
   }));
   refs.startGameBtn.addEventListener("click", () => {
+    showQueueOverlay("Deploying Match", "Loading the map, syncing loadouts, and briefing the room...");
     socket.emit("room:start", {}, (response) => {
       if (response?.ok === false) {
+        hideQueueOverlay();
         showToast(response.message || "Unable to start match", "error");
       }
     });
@@ -356,6 +440,12 @@ function bindEvents() {
   }
 
   refs.playerNameInput.addEventListener("change", persistProfileFromInput);
+
+  document.querySelectorAll("[data-coming-soon]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showToast(`${button.dataset.comingSoon || "Feature"} is not wired into this build yet`);
+    });
+  });
 }
 
 function bindSocket() {
@@ -381,11 +471,21 @@ function bindSocket() {
     }
   });
 
+  socket.on("net:pong", ({ latency }) => {
+    const dot = document.getElementById("lobbyPingDot");
+    const ms = document.getElementById("lobbyPingMs");
+    if (!dot || !ms) return;
+    ms.textContent = `${Math.round(latency)} ms`;
+    dot.className = `ping-dot${latency > 120 ? " high" : latency > 60 ? " medium" : ""}`;
+  });
+
   socket.on("room:error", (payload) => {
+    hideQueueOverlay();
     showToast(payload.message || "Server error", "error");
   });
 
   socket.on("room:kicked", () => {
+    hideQueueOverlay();
     showToast("You were removed from the room", "error");
     resetToLanding();
   });
@@ -439,7 +539,14 @@ function init() {
   bindSocket();
   renderColors();
   renderModeDescription();
+  renderLifetimeStats();
   resumeIfPossible();
+
+  if (!lobbyPingTimer) {
+    lobbyPingTimer = setInterval(() => {
+      socket.emit("net:ping", { sentAt: Date.now() }, () => {});
+    }, 2000);
+  }
 
   const joinCode = getJoinCodeFromUrl();
   if (joinCode) {

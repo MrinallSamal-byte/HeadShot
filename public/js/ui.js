@@ -1,4 +1,4 @@
-import { renderGunCarousel } from "./guns.js";
+import { getGun, renderGunCarousel } from "./guns.js";
 
 export function showToast(message, type = "info") {
   let host = document.getElementById("toastHost");
@@ -57,6 +57,13 @@ export class GameUI {
       .forEach((control) => control.addEventListener("input", apply));
 
     document.getElementById("resumeBtn").addEventListener("click", () => this.toggleSettings(false));
+    document.getElementById("fullscreenBtn")?.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
     document.getElementById("quitMatchBtn").addEventListener("click", () => onQuit?.());
   }
 
@@ -99,21 +106,43 @@ export class GameUI {
   }
 
   renderDeathScreen(data, selectedGunId, onSelect, onRespawn) {
+    const selectedGun = getGun(selectedGunId);
     this.deathModal.hidden = false;
     this.deathBody.innerHTML = `
-      <h2>You Were Killed</h2>
-      <p>By: ${data.killerName} with ${data.gunName}</p>
-      <div class="death-stats">
-        <span>Kills: ${data.kills}</span>
-        <span>Deaths: ${data.deaths}</span>
-        <span>Damage: ${data.damage}</span>
-        <span>K/D: ${data.deaths ? (data.kills / data.deaths).toFixed(2) : data.kills.toFixed(2)}</span>
+      <div class="death-killer-block">
+        <div class="death-killer-label">Eliminated By</div>
+        <div class="death-killer-name">${data.killerName}</div>
+        <div class="death-killer-gun">${data.gunName}</div>
       </div>
-      <h3>Select Your Gun</h3>
-      <div id="deathGunPicker" class="gun-grid"></div>
-      <div class="death-footer">
-        <div id="deathCountdown">Respawning in 0...</div>
-        <button id="respawnBtn" class="primary" disabled>Respawn Now</button>
+
+      <div class="death-layout">
+        <section class="death-left">
+          <h3 class="death-subhead">Operator Report</h3>
+          <div class="death-stats">
+            <div class="death-stat-chip">Kills<strong>${data.kills}</strong></div>
+            <div class="death-stat-chip">Deaths<strong>${data.deaths}</strong></div>
+            <div class="death-stat-chip">Damage<strong>${data.damage}</strong></div>
+            <div class="death-stat-chip">K/D<strong>${data.deaths ? (data.kills / data.deaths).toFixed(2) : data.kills.toFixed(2)}</strong></div>
+          </div>
+          <h3 class="death-subhead">Select Loadout</h3>
+          <div id="deathGunPicker" class="gun-grid"></div>
+        </section>
+
+        <aside class="death-right">
+          <h3 class="death-subhead">Current Class</h3>
+          <div class="death-class-name">${selectedGun.name}</div>
+          <div class="death-class-meta">
+            Range: ${selectedGun.range}
+            <br>
+            Magazine: ${selectedGun.magazine}
+            <br>
+            Reload: ${selectedGun.reloadTime.toFixed(1)}s
+          </div>
+          <div class="death-footer">
+            <div id="deathCountdown">Respawning in 0...</div>
+            <button id="respawnBtn" class="primary" disabled>Respawn</button>
+          </div>
+        </aside>
       </div>
     `;
     const picker = this.deathBody.querySelector("#deathGunPicker");

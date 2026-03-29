@@ -7,41 +7,39 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/hud.css">
+  <link rel="stylesheet" href="/css/style.css?v=20260329d">
+  <link rel="stylesheet" href="/css/hud.css?v=20260329d">
 </head>
 <body class="game-body">
   <canvas id="gameCanvas"></canvas>
 
   <div id="hudLayer">
-    <div class="hud-block top-left">
+    <div class="hud-block top-left combat-feed">
       <div id="killFeed" class="kill-feed"></div>
     </div>
 
-    <div class="hud-block top-center">
+    <div class="hud-block top-center" id="topCenterStack">
       <div id="matchTimer" class="timer-pill">⏱ 00:00</div>
       <div id="announcement" class="announcement"></div>
-    </div>
-
-    <div id="spectatorBanner" class="hud-block top-center spectator-banner-wrap" hidden>
-      <div class="spectator-pill">
-        SPECTATING <span id="specTargetName">—</span>
-        &nbsp;|&nbsp; <span id="specTargetHp">— HP</span>
-        &nbsp;|&nbsp; <span id="specTargetGun">—</span>
+      <div id="spectatorBanner" hidden>
+        <div class="spectator-pill">
+          SPECTATING <span id="specTargetName">—</span>
+          &nbsp;|&nbsp; <span id="specTargetHp">— HP</span>
+          &nbsp;|&nbsp; <span id="specTargetGun">—</span>
+        </div>
+      </div>
+      <div id="respawnCountdown" hidden>
+        <div class="respawn-pill">RESPAWNING IN <span id="respawnSecs">3</span>s</div>
       </div>
     </div>
 
-    <div id="respawnCountdown" class="hud-block top-center respawn-countdown-wrap" hidden>
-      <div class="respawn-pill">RESPAWNING IN <span id="respawnSecs">3</span>s</div>
-    </div>
-
-    <div class="hud-block top-right">
+    <div class="hud-block top-right tactical-panel">
       <canvas id="minimap" width="180" height="180"></canvas>
       <div id="scoreBrief" class="brief-score">You: 0K / 0D</div>
       <div id="fpsPing" class="perf-pill">0 FPS | 0 ms</div>
     </div>
 
-    <div class="hud-block bottom-left">
+    <div class="hud-block bottom-left combat-panel">
       <div class="bar-wrap">
         <div class="bar-label" id="healthText">100 HP</div>
         <div class="bar"><div id="healthFill" class="bar-fill health"></div></div>
@@ -54,7 +52,7 @@
       <div id="chatLog" class="chat-log"></div>
     </div>
 
-    <div class="hud-block bottom-right">
+    <div class="hud-block bottom-right weapon-panel">
       <div id="gunName" class="gun-title">Assault Rifle</div>
       <div class="bar"><div id="ammoFill" class="bar-fill ammo"></div></div>
       <div id="ammoText" class="ammo-text">30/120</div>
@@ -62,6 +60,25 @@
         <div class="bar"><div id="reloadFill" class="bar-fill reload"></div></div>
       </div>
       <div class="hint-line">Press R to reload</div>
+    </div>
+
+    <div id="roomCodePill" class="hud-block bottom-right room-code-pill" hidden>
+      ROOM: <span id="inGameRoomCode">------</span>
+      <button id="copyInGameCode" title="Copy code">⧉</button>
+    </div>
+  </div>
+
+  <div id="damageDirections"></div>
+
+  <div id="countdownOverlay" class="countdown-overlay" hidden>
+    <div id="countdownNumber" class="countdown-number">3</div>
+  </div>
+
+  <div id="matchFoundOverlay" class="match-found-overlay" hidden>
+    <div class="match-found-card">
+      <div class="match-found-tag">Deployment Ready</div>
+      <div id="matchFoundTitle" class="match-found-title">Match Found</div>
+      <div id="matchFoundSubtitle" class="match-found-subtitle">Operators synced. Preparing insertion.</div>
     </div>
   </div>
 
@@ -97,6 +114,9 @@
           <option value="dot">·</option>
         </select>
       </label>
+      <div class="modal-actions" style="margin-top:0.5rem;">
+        <button id="fullscreenBtn">Fullscreen (F)</button>
+      </div>
       <div class="modal-actions">
         <button id="resumeBtn" class="primary">Resume</button>
         <button id="quitMatchBtn">Quit Match</button>
@@ -126,6 +146,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="/js/game.js"></script>
+  <script type="module" src="/js/game.js?v=20260329d"></script>
 </body>
 </html>

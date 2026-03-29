@@ -1,5 +1,6 @@
 import {
   createSocket,
+  addMatchToStats,
   loadProfile,
   saveProfile,
   loadSession,
@@ -34,6 +35,14 @@ const specTargetGun = document.getElementById("specTargetGun");
 const respawnCountdown = document.getElementById("respawnCountdown");
 const respawnSecs = document.getElementById("respawnSecs");
 const mobileControls = document.getElementById("mobileControls");
+const countdownOverlay = document.getElementById("countdownOverlay");
+const countdownNumber = document.getElementById("countdownNumber");
+const matchFoundOverlay = document.getElementById("matchFoundOverlay");
+const matchFoundTitle = document.getElementById("matchFoundTitle");
+const matchFoundSubtitle = document.getElementById("matchFoundSubtitle");
+const roomCodePill = document.getElementById("roomCodePill");
+const inGameRoomCode = document.getElementById("inGameRoomCode");
+const damageDirections = document.getElementById("damageDirections");
 
 const hud = new HUD();
 const settings = {
@@ -86,11 +95,15 @@ const localRuntime = {
   reloadStartAt: 0,
   reloading: false,
   lastFireAt: 0,
+  lastEmptyClickAt: 0,
   lastHeartbeatAt: 0,
+  lastBoostParticleAt: 0,
   hitMarkerAt: 0,
+  justKilledId: null,
   lastPing: 0,
   alive: false,
-  spectatingToken: null
+  spectatingToken: null,
+  warmupUntil: 0
 };
 const camera = {
   x: 0,
@@ -101,6 +114,7 @@ const camera = {
 let scoreboardHeld = false;
 let deathState = null;
 let currentAnnouncement = null;
+let matchFoundTimer = null;
 let lastFrame = performance.now();
 let fps = 0;
 let fpsAccumulator = [];
@@ -177,6 +191,12 @@ function getRows() {
 
 function setRoomState(room) {
   roomInfo = room;
+  if (room && !room.publicRoom && room.code) {
+    roomCodePill.hidden = false;
+    inGameRoomCode.textContent = room.code;
+  } else {
+    roomCodePill.hidden = true;
+  }
 }
 
 function resyncSession() {
@@ -196,6 +216,9 @@ function resyncSession() {
     setRoomState(response.room);
     profile.playerToken = response.player.token;
     saveProfile(profile);
+    if (response.room.status === "lobby") {
+      window.location.href = "/index.html";
+    }
   });
 }
 
@@ -339,6 +362,120 @@ function drawCrosshair(localPlayer) {
   ctx.restore();
 }
 
+function drawGrenadeTrajectory(localPlayer) {
+  if (!localPlayer?.alive || localPlayer.gunId !== 8) return;
+
+  const angle = getAimAngle();
+  const maxRange = 1000;
+  const stepSize = 20;
+  const colliders = mapRenderer.data.walls.concat((latestState.destructibles || []).filter((item) => item.active));
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(192,132,252,0.5)";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+
+  let x = localRuntime.x - camera.x;
+  let y = localRuntime.y - camera.y;
+  let vx = Math.cos(angle);
+  let vy = Math.sin(angle);
+  let bounced = false;
+  let traveled = 0;
+
+  ctx.moveTo(x, y);
+  while (traveled < maxRange) {
+    const nx = x + vx * stepSize;
+    const ny = y + vy * stepSize;
+    let blocked = false;
+
+    for (const wall of colliders) {
+      const worldX = nx + camera.x;
+      const worldY = ny + camera.y;
+      if (worldX < wall.x || worldX > wall.x + wall.w || worldY < wall.y || worldY > wall.y + wall.h) {
+        continue;
+      }
+      if (!bounced) {
+        const fromLeft = x + camera.x < wall.x;
+        const fromTop = y + camera.y < wall.y;
+        if (
+          Math.abs(worldX - (fromLeft ? wall.x : wall.x + wall.w))
+          < Math.abs(worldY - (fromTop ? wall.y : wall.y + wall.h))
+        ) {
+          vx = -vx;
+        } else {
+          vy = -vy;
+        }
+        bounced = true;
+      }
+      blocked = true;
+      break;
+    }
+
+    if (!blocked) {
+      x = nx;
+      y = ny;
+      ctx.lineTo(x, y);
+    } else if (bounced) {
+      ctx.lineTo(x, y);
+      break;
+    }
+    traveled += stepSize;
+  }
+
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(192,132,252,0.7)";
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function showDamageDirection(fromWorldX, fromWorldY) {
+  const angle = Math.atan2(fromWorldY - localRuntime.y, fromWorldX - localRuntime.x);
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const radius = Math.min(cx, cy) * 0.72;
+  const indicatorX = cx + Math.cos(angle) * radius;
+  const indicatorY = cy + Math.sin(angle) * radius;
+
+  const arrow = document.createElement("div");
+  arrow.className = "damage-arrow";
+  arrow.style.cssText = `
+    left: ${indicatorX}px;
+    top: ${indicatorY}px;
+    transform: translate(-50%, -50%) rotate(${angle + Math.PI / 2}rad);
+    border-bottom-color: #ff3344;
+    border-top: 0;
+  `;
+  damageDirections.appendChild(arrow);
+  requestAnimationFrame(() => arrow.classList.add("visible"));
+  setTimeout(() => arrow.remove(), 900);
+}
+
+function formatModeName(mode) {
+  if (mode === "tdm") return "Team Deathmatch";
+  if (mode === "koth") return "King Of The Hill";
+  return "Free For All";
+}
+
+function formatMapName(mapId) {
+  if (mapId === "city") return "City Block";
+  if (mapId === "bunker") return "Bunker";
+  return "Warehouse";
+}
+
+function showMatchFound(payload) {
+  matchFoundTitle.textContent = "Match Found";
+  matchFoundSubtitle.textContent = `${formatModeName(payload.mode)} · ${formatMapName(payload.mapId)} · Operators syncing`;
+  matchFoundOverlay.hidden = false;
+  clearTimeout(matchFoundTimer);
+  matchFoundTimer = setTimeout(() => {
+    matchFoundOverlay.hidden = true;
+  }, 1250);
+}
+
 function updateCamera(target, scoped) {
   camera.zoom = scoped ? 2.5 : 1;
   const viewWidth = canvas.width / camera.zoom;
@@ -392,10 +529,17 @@ function tryFire(localPlayer) {
   if (!mouse.down || !localPlayer || !localPlayer.alive || ui.chatInputWrap.hidden === false || ui.settingsModal.hidden === false) {
     return;
   }
+  if (Date.now() < (localRuntime.warmupUntil || 0)) {
+    return;
+  }
 
   const gun = getGun(localPlayer.gunId);
   if (localPlayer.ammoInMag <= 0 && !localPlayer.reloading) {
-    sounds.play("empty_click", { x: localRuntime.x, y: localRuntime.y });
+    const now = performance.now();
+    if (now - localRuntime.lastEmptyClickAt > 400) {
+      localRuntime.lastEmptyClickAt = now;
+      sounds.play("empty_click", { x: localRuntime.x, y: localRuntime.y });
+    }
     return;
   }
   if (localPlayer.ammoInMag <= 0 && localPlayer.reloading) {
@@ -489,8 +633,11 @@ function renderWorld(localPlayer, spectatingTarget) {
     sprite.draw(ctx, camera, session.playerToken, latestState.mode !== "ffa", getCurrentTeam());
   }
 
-  particles.draw(ctx, camera);
+  drawGrenadeTrajectory(localPlayer);
+  particles.drawWorld(ctx, camera);
   ctx.restore();
+
+  particles.drawScreen(ctx);
 
   if (scoped) {
     const grad = ctx.createRadialGradient(
@@ -539,6 +686,13 @@ function renderLoop(time) {
   const localPlayer = getLocalPlayer();
   if (localPlayer?.alive) {
     updatePrediction(delta, localPlayer);
+    if (localPlayer.speedBoostUntil > Date.now()) {
+      const now = performance.now();
+      if (!localRuntime.lastBoostParticleAt || now - localRuntime.lastBoostParticleAt > 100) {
+        localRuntime.lastBoostParticleAt = now;
+        particles.emit("dust", { x: localRuntime.x, y: localRuntime.y, color: "#c084fc" });
+      }
+    }
     tryFire(localPlayer);
   }
 
@@ -776,9 +930,18 @@ function bindInput() {
         input.right = true;
         break;
       case "r":
-        socket.emit("player:reload");
-        sounds.play("reload_start", { x: localRuntime.x, y: localRuntime.y });
+      {
+        const localPlayer = getLocalPlayer();
+        if (
+          localPlayer?.alive
+          && !localPlayer.reloading
+          && localPlayer.ammoInMag < getGun(localPlayer.gunId).magazine
+        ) {
+          socket.emit("player:reload");
+          sounds.play("reload_start", { x: localRuntime.x, y: localRuntime.y });
+        }
         break;
+      }
       case "1":
       case "2":
       case "3":
@@ -801,6 +964,13 @@ function bindInput() {
         break;
       case "m":
         showToast(sounds.toggleMute() ? "Muted" : "Audio on");
+        break;
+      case "f":
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
         break;
       case "enter":
         event.preventDefault();
@@ -882,7 +1052,9 @@ function bindSocket() {
   socket.on("game:start", (payload) => {
     latestState.mode = payload.mode;
     mapRenderer.setMap(payload.mapId);
+    localRuntime.warmupUntil = Date.now() + 3000;
     if (roomInfo) roomInfo.settings = payload.settings;
+    showMatchFound(payload);
   });
 
   socket.on("game:state", (snapshot) => {
@@ -913,17 +1085,27 @@ function bindSocket() {
     }
   });
 
-  socket.on("player:hit", ({ victimId, damage, x, y, killerId }) => {
+  socket.on("player:hit", ({ victimId, damage, x, y, attackerId }) => {
     particles.addDamageNumber(x, y, damage);
     if (victimId === SELF_ID) {
       localRuntime.lastDamageAt = Date.now();
-    } else if (killerId === SELF_ID) {
+      if (attackerId) {
+        const attackerSprite = playerSprites.get(attackerId);
+        if (attackerSprite) {
+          showDamageDirection(attackerSprite.drawX, attackerSprite.drawY);
+        }
+      }
+    } else if (attackerId === SELF_ID && victimId !== localRuntime.justKilledId) {
       localRuntime.hitMarkerAt = performance.now();
+    }
+    if (localRuntime.justKilledId && victimId === localRuntime.justKilledId) {
+      localRuntime.justKilledId = null;
     }
   });
 
   socket.on("player:killed", (payload) => {
     if (payload.killerId === SELF_ID) {
+      localRuntime.justKilledId = payload.victimId;
       localRuntime.hitMarkerAt = performance.now();
       sounds.play("kill_confirm");
       const killedSprite = playerSprites.get(payload.victimId);
@@ -960,11 +1142,37 @@ function bindSocket() {
     ui.showAnnouncement(text, type);
   });
 
+  socket.on("match:countdown", ({ seconds }) => {
+    if (seconds > 0) {
+      countdownOverlay.hidden = false;
+      countdownNumber.textContent = seconds;
+      countdownNumber.style.color = "#ffb800";
+      countdownNumber.style.animation = "none";
+      countdownNumber.offsetHeight;
+      countdownNumber.style.animation = "";
+    } else {
+      countdownOverlay.hidden = false;
+      countdownNumber.textContent = "GO!";
+      countdownNumber.style.color = "#00ff88";
+      countdownNumber.style.animation = "none";
+      countdownNumber.offsetHeight;
+      countdownNumber.style.animation = "";
+      setTimeout(() => {
+        countdownOverlay.hidden = true;
+        countdownNumber.style.color = "";
+      }, 800);
+    }
+  });
+
   socket.on("net:pong", ({ latency }) => {
     localRuntime.lastPing = latency;
   });
 
   socket.on("game:end", (result) => {
+    const selfRow = result.leaderboard?.find((row) => row.playerId === SELF_ID);
+    if (selfRow) {
+      addMatchToStats(selfRow.kills || 0, selfRow.deaths || 0, selfRow.damage || 0);
+    }
     const modal = document.getElementById("leaderboardModal");
     modal.hidden = false;
     renderLeaderboard(modal, result, session.playerToken, getCurrentTeam());
@@ -995,6 +1203,12 @@ function initUI() {
   ui.bindChatSubmit((text) => {
     socket.emit("chat:send", { text });
     ui.showChatInput(false);
+  });
+  document.getElementById("copyInGameCode")?.addEventListener("click", async () => {
+    const code = inGameRoomCode?.textContent;
+    if (!code) return;
+    await navigator.clipboard.writeText(code).catch(() => {});
+    showToast("Room code copied");
   });
 }
 

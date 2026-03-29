@@ -307,6 +307,9 @@ class GameState {
     this.ended = false;
     this.startedAt = Date.now();
     this.lastTickAt = this.startedAt;
+    this.warmupUntil = Date.now() + 3000;
+    this.warmupBroadcastDone = false;
+    this.lastWarmupSecond = null;
     this.remainingTime = room.settings.timeLimit ? room.settings.timeLimit * 1000 : null;
     this.lastTimerBroadcastSecond = this.remainingTime !== null ? Math.ceil(this.remainingTime / 1000) : null;
     this.hill = {
@@ -710,6 +713,9 @@ class GameState {
     if (!player || !player.alive || this.ended) {
       return;
     }
+    if (Date.now() < this.warmupUntil) {
+      return;
+    }
 
     const gun = getGunConfig(player.gunId);
     const now = Date.now();
@@ -822,7 +828,7 @@ class GameState {
       victimId: victim.id,
       damage: hpDamage,
       newHP: victim.hp,
-      killerId: attacker ? attacker.id : null,
+      attackerId: attacker ? attacker.id : null,
       gunId,
       x: hitPoint?.x ?? victim.x,
       y: hitPoint?.y ?? victim.y
@@ -836,9 +842,6 @@ class GameState {
   addKillFeed(entry) {
     this.killFeed.unshift(entry);
     this.killFeed = this.killFeed.slice(0, 5);
-    this.io.to(this.room.code).emit("killfeed:update", {
-      kills: this.killFeed
-    });
   }
 
   emitAnnouncement(text, type = "neutral") {
@@ -1384,6 +1387,20 @@ class GameState {
     const now = Date.now();
     const delta = Math.min(0.05, (now - this.lastTickAt) / 1000);
     this.lastTickAt = now;
+
+    if (!this.warmupBroadcastDone) {
+      const remaining = Math.ceil((this.warmupUntil - now) / 1000);
+      if (remaining > 0) {
+        if (remaining !== this.lastWarmupSecond) {
+          this.lastWarmupSecond = remaining;
+          this.io.to(this.room.code).emit("match:countdown", { seconds: remaining });
+        }
+      } else {
+        this.warmupBroadcastDone = true;
+        this.io.to(this.room.code).emit("match:countdown", { seconds: 0 });
+        this.emitAnnouncement("GO!", "start");
+      }
+    }
 
     this.syncRoomPlayers();
     if (this.remainingTime !== null) {

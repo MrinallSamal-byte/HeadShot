@@ -29,27 +29,54 @@ export class HUD {
     this.scoreboardBody = document.getElementById("scoreboardBody");
     this.messages = [];
     this.prevTeamScores = { red: 0, blue: 0 };
+    this.redFlashTimer = null;
+    this.blueFlashTimer = null;
+    this._prevHp = -1;
+    this._prevArmor = -1;
+    this._prevAmmo = -1;
+    this._prevReserveAmmo = null;
+    this._prevGunId = null;
+    this._prevRemaining = null;
   }
 
   updatePlayer(localPlayer, gun, remaining, teamScores, roomMode) {
     if (!localPlayer) return;
-    this.healthFill.style.width = `${(localPlayer.hp / localPlayer.maxHp) * 100}%`;
-    this.healthText.textContent = `${Math.round(localPlayer.hp)} HP`;
+    const hp = Math.round(localPlayer.hp);
+    if (hp !== this._prevHp) {
+      this.healthFill.style.width = `${(localPlayer.hp / localPlayer.maxHp) * 100}%`;
+      this.healthText.textContent = `${hp} HP`;
+      this._prevHp = hp;
+    }
     this.regenLabel.textContent = localPlayer.hp < Math.min(70, localPlayer.maxHp) && localPlayer.lastDamageAt ? "REGEN READY" : "";
 
     if (localPlayer.armor > 0) {
       this.armorWrap.hidden = false;
-      this.armorFill.style.width = `${(localPlayer.armor / localPlayer.maxArmor) * 100}%`;
-      this.armorText.textContent = `${Math.round(localPlayer.armor)} ARM`;
+      const armor = Math.round(localPlayer.armor);
+      if (armor !== this._prevArmor) {
+        this.armorFill.style.width = `${(localPlayer.armor / localPlayer.maxArmor) * 100}%`;
+        this.armorText.textContent = `${armor} ARM`;
+        this._prevArmor = armor;
+      }
     } else {
       this.armorWrap.hidden = true;
+      this._prevArmor = 0;
     }
 
-    this.gunName.textContent = gun.name;
-    this.ammoText.textContent = localPlayer.reserveAmmo < 0
-      ? `${localPlayer.ammoInMag}/∞`
-      : `${localPlayer.ammoInMag}/${localPlayer.reserveAmmo}`;
-    this.ammoFill.style.width = `${(localPlayer.ammoInMag / gun.magazine) * 100}%`;
+    if (this._prevGunId !== gun.id) {
+      this.gunName.textContent = gun.name;
+      this._prevGunId = gun.id;
+    }
+    const ammo = localPlayer.ammoInMag;
+    if (ammo !== this._prevAmmo || localPlayer.reserveAmmo !== this._prevReserveAmmo) {
+      this.ammoText.textContent = localPlayer.reserveAmmo < 0
+        ? `${ammo}/∞`
+        : `${ammo}/${localPlayer.reserveAmmo}`;
+      this.ammoFill.style.width = `${(ammo / gun.magazine) * 100}%`;
+      this._prevAmmo = ammo;
+      this._prevReserveAmmo = localPlayer.reserveAmmo;
+    }
+    const lowAmmo = localPlayer.ammoInMag / gun.magazine < 0.2 && localPlayer.ammoInMag > 0;
+    this.ammoFill.classList.toggle("low", lowAmmo);
     if (localPlayer.reloading && localPlayer.reloadEndAt) {
       this.reloadWrap.hidden = false;
       const totalMs = gun.reloadTime * 1000;
@@ -63,19 +90,28 @@ export class HUD {
       this.scoreBrief.textContent = `RED ${teamScores.red} : ${teamScores.blue} BLUE`;
       if (teamScores.red > this.prevTeamScores.red) {
         this.scoreBrief.classList.add("score-flash-red");
-        setTimeout(() => this.scoreBrief.classList.remove("score-flash-red"), 600);
+        clearTimeout(this.redFlashTimer);
+        this.redFlashTimer = setTimeout(() => this.scoreBrief.classList.remove("score-flash-red"), 600);
       }
       if (teamScores.blue > this.prevTeamScores.blue) {
         this.scoreBrief.classList.add("score-flash-blue");
-        setTimeout(() => this.scoreBrief.classList.remove("score-flash-blue"), 600);
+        clearTimeout(this.blueFlashTimer);
+        this.blueFlashTimer = setTimeout(() => this.scoreBrief.classList.remove("score-flash-blue"), 600);
       }
       this.prevTeamScores = { ...teamScores };
     } else {
       this.scoreBrief.textContent = `You: ${localPlayer.kills}K / ${localPlayer.deaths}D`;
     }
 
-    this.timer.textContent = `⏱ ${formatTime(remaining)}`;
-    this.timer.className = remaining !== null && remaining <= 30000 ? "critical" : remaining !== null && remaining <= 60000 ? "warning" : "";
+    if (remaining !== this._prevRemaining) {
+      this.timer.textContent = `⏱ ${formatTime(remaining)}`;
+      this._prevRemaining = remaining;
+    }
+    this.timer.className = remaining !== null && remaining <= 30000
+      ? "timer-pill critical"
+      : remaining !== null && remaining <= 60000
+        ? "timer-pill warning"
+        : "timer-pill";
   }
 
   updateKillFeed(feed = []) {
@@ -98,7 +134,11 @@ export class HUD {
   renderChat() {
     this.messages = this.messages.filter((message) => Date.now() - message.createdAt < 6000);
     this.chatLog.innerHTML = this.messages
-      .map((message) => `<div><span>${message.team ? "[T]" : "[A]"}</span> ${message.sender}: ${message.text}</div>`)
+      .map((message) => {
+        const prefix = message.team ? "[T]" : "[A]";
+        const nameColor = message.color ? `style="color:${message.color}"` : "";
+        return `<div><span style="color:#475569">${prefix}</span> <span ${nameColor}>${message.sender}</span>: ${message.text}</div>`;
+      })
       .join("");
   }
 
