@@ -28,6 +28,7 @@ export class HUD {
     this.scoreboard = document.getElementById("scoreboard");
     this.scoreboardBody = document.getElementById("scoreboardBody");
     this.messages = [];
+    this.prevTeamScores = { red: 0, blue: 0 };
   }
 
   updatePlayer(localPlayer, gun, remaining, teamScores, roomMode) {
@@ -49,17 +50,26 @@ export class HUD {
       ? `${localPlayer.ammoInMag}/∞`
       : `${localPlayer.ammoInMag}/${localPlayer.reserveAmmo}`;
     this.ammoFill.style.width = `${(localPlayer.ammoInMag / gun.magazine) * 100}%`;
-    if (localPlayer.reloading) {
+    if (localPlayer.reloading && localPlayer.reloadEndAt) {
       this.reloadWrap.hidden = false;
-      const total = Math.max(1, localPlayer.reloadEndAt - (localPlayer.reloadStartAt || 0));
-      const remainingReload = Math.max(0, localPlayer.reloadEndAt - Date.now());
-      this.reloadFill.style.width = `${100 - (remainingReload / total) * 100}%`;
+      const totalMs = gun.reloadTime * 1000;
+      const elapsed = Date.now() - (localPlayer.reloadEndAt - totalMs);
+      this.reloadFill.style.width = `${Math.min(100, Math.max(0, (elapsed / totalMs) * 100))}%`;
     } else {
       this.reloadWrap.hidden = true;
     }
 
     if (roomMode === "tdm" || roomMode === "koth") {
       this.scoreBrief.textContent = `RED ${teamScores.red} : ${teamScores.blue} BLUE`;
+      if (teamScores.red > this.prevTeamScores.red) {
+        this.scoreBrief.classList.add("score-flash-red");
+        setTimeout(() => this.scoreBrief.classList.remove("score-flash-red"), 600);
+      }
+      if (teamScores.blue > this.prevTeamScores.blue) {
+        this.scoreBrief.classList.add("score-flash-blue");
+        setTimeout(() => this.scoreBrief.classList.remove("score-flash-blue"), 600);
+      }
+      this.prevTeamScores = { ...teamScores };
     } else {
       this.scoreBrief.textContent = `You: ${localPlayer.kills}K / ${localPlayer.deaths}D`;
     }
@@ -70,12 +80,13 @@ export class HUD {
 
   updateKillFeed(feed = []) {
     this.killFeed.innerHTML = feed
-      .map((entry) => `<div>${entry.killerName} ☠ ${entry.victimName} <small>(${entry.gunName})</small></div>`)
+      .map((entry, index) => `<div class="kf-entry" style="animation-delay:${index * 0.05}s">${entry.killerName} ☠ ${entry.victimName} <small>(${entry.gunName})</small></div>`)
       .join("");
   }
 
   updatePerf(fps, ping) {
     this.fpsPing.textContent = `${fps.toFixed(0)} FPS | ${Math.round(ping)} ms`;
+    this.fpsPing.style.color = ping > 120 ? "#ff3344" : ping > 60 ? "#ffb800" : "#00ff88";
   }
 
   addChatMessage(message) {

@@ -32,6 +32,7 @@ const refs = {
   colorPicker: document.getElementById("colorPicker"),
   roomCodeLabel: document.getElementById("roomCodeLabel"),
   copyRoomBtn: document.getElementById("copyRoomBtn"),
+  shareLinkBtn: document.getElementById("shareLinkBtn"),
   leaveLobbyBtn: document.getElementById("leaveLobbyBtn"),
   lobbyStatusText: document.getElementById("lobbyStatusText"),
   teamRedList: document.getElementById("teamRedList"),
@@ -53,6 +54,12 @@ const refs = {
   settingFriendlyFire: document.getElementById("settingFriendlyFire"),
   settingPickups: document.getElementById("settingPickups"),
   settingRegen: document.getElementById("settingRegen")
+};
+
+const modeDescriptions = {
+  ffa: "Free For All - every player for themselves. Highest kills wins.",
+  tdm: "Team Deathmatch - Red vs Blue. Most team kills wins.",
+  koth: "King of the Hill - capture and hold the zone. 100 points to win."
 };
 
 function selectedSettingsFromDom() {
@@ -81,6 +88,20 @@ function syncSettingsToDom(settings) {
   refs.settingFriendlyFire.value = String(settings.friendlyFire);
   refs.settingPickups.value = String(settings.allowPickups);
   refs.settingRegen.value = String(settings.regenEnabled);
+  renderModeDescription();
+}
+
+function renderModeDescription() {
+  let desc = document.getElementById("modeDesc");
+  if (!desc) {
+    desc = document.createElement("p");
+    desc.id = "modeDesc";
+    desc.style.color = "#94a3b8";
+    desc.style.fontSize = "0.8rem";
+    desc.style.marginTop = "0.5rem";
+    refs.settingMode.parentElement.appendChild(desc);
+  }
+  desc.textContent = modeDescriptions[refs.settingMode.value] || "";
 }
 
 function renderColors() {
@@ -150,10 +171,14 @@ function renderPlayerRow(player) {
   const isHost = currentRoom?.hostId === currentPlayer?.token;
   const row = document.createElement("div");
   row.className = "player-row";
+  const readyBadge = player.ready
+    ? `<span style="color:#00ff88;font-size:0.75rem;">● READY</span>`
+    : `<span style="color:#475569;font-size:0.75rem;">○ WAITING</span>`;
   row.innerHTML = `
     <span class="status-pill" style="background:${player.color}22;color:${player.color}">${player.name}</span>
-    <span>${player.connected ? "ONLINE" : "RECONNECTING"} ${player.ready ? "READY" : ""} ${player.isHost ? "HOST" : ""}</span>
-    <span>${player.ping || 0}ms</span>
+    ${readyBadge}
+    ${player.isHost ? '<span style="color:#ffb800;font-size:0.75rem;">HOST</span>' : ""}
+    <span style="color:#64748b">${player.connected ? "" : "RECONNECTING "}${player.ping || 0}ms</span>
   `;
 
   if (isHost && !player.isHost && currentRoom.settings.mode !== "ffa" && !player.spectator) {
@@ -282,6 +307,15 @@ function bindEvents() {
       showToast("Clipboard copy failed", "error");
     }
   });
+  refs.shareLinkBtn.addEventListener("click", async () => {
+    const url = `${window.location.origin}/?join=${currentRoom.code}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Room link copied to clipboard");
+    } catch (_error) {
+      showToast(`Copy failed - link: ${url}`, "error");
+    }
+  });
   refs.leaveLobbyBtn.addEventListener("click", () => {
     socket.emit("room:leave");
     resetToLanding();
@@ -303,8 +337,11 @@ function bindEvents() {
     refs.howToModal.hidden = true;
   });
 
+  refs.settingMode.addEventListener("change", () => {
+    renderModeDescription();
+    socket.emit("room:settings", selectedSettingsFromDom());
+  });
   for (const element of [
-    refs.settingMode,
     refs.settingMap,
     refs.settingTime,
     refs.settingKillLimit,
@@ -401,6 +438,7 @@ function init() {
   bindEvents();
   bindSocket();
   renderColors();
+  renderModeDescription();
   resumeIfPossible();
 
   const joinCode = getJoinCodeFromUrl();

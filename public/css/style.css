@@ -10,6 +10,10 @@ body {
   overflow-x: hidden;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body.scanlines::before,
 body.game-body::before {
   content: "";

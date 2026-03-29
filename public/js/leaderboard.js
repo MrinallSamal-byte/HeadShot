@@ -1,4 +1,52 @@
-export function renderLeaderboard(container, result, selfToken) {
+export function launchConfetti(container) {
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:150;width:100%;height:100%";
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  container.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  const colors = ["#ffb800", "#00ff88", "#ff3344", "#7dd3fc", "#c084fc", "#f97316"];
+  const pieces = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * 200,
+    vx: (Math.random() - 0.5) * 3,
+    vy: 2 + Math.random() * 4,
+    size: 6 + Math.random() * 10,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    rot: Math.random() * Math.PI * 2,
+    rotV: (Math.random() - 0.5) * 0.2
+  }));
+  let frame;
+  const animate = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let anyAlive = false;
+    for (const piece of pieces) {
+      piece.x += piece.vx;
+      piece.y += piece.vy;
+      piece.vy += 0.06;
+      piece.rot += piece.rotV;
+      if (piece.y < canvas.height + 30) anyAlive = true;
+      ctx.save();
+      ctx.translate(piece.x, piece.y);
+      ctx.rotate(piece.rot);
+      ctx.fillStyle = piece.color;
+      ctx.fillRect(-piece.size / 2, -piece.size / 4, piece.size, piece.size / 2);
+      ctx.restore();
+    }
+    if (anyAlive) {
+      frame = requestAnimationFrame(animate);
+    } else {
+      canvas.remove();
+    }
+  };
+  frame = requestAnimationFrame(animate);
+  setTimeout(() => {
+    cancelAnimationFrame(frame);
+    canvas.remove();
+  }, 6000);
+}
+
+export function renderLeaderboard(container, result, selfToken, selfTeam) {
   const rows = result?.leaderboard || [];
   const awards = rows.reduce(
     (summary, row) => {
@@ -45,4 +93,9 @@ export function renderLeaderboard(container, result, selfToken) {
       </div>
     </div>
   `;
+
+  const teamWinner = selfTeam === "red" ? "Team Red" : selfTeam === "blue" ? "Team Blue" : null;
+  if (rows[0]?.playerId === selfToken.slice(-8) || (teamWinner && result?.winner === teamWinner)) {
+    setTimeout(() => launchConfetti(document.body), 400);
+  }
 }

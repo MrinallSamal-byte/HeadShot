@@ -76,11 +76,13 @@ export class SoundManager {
       hit_flesh: [300, 0.05, "triangle"],
       hit_wall: [750, 0.03, "square"],
       reload: [520, 0.08, "square"],
+      reload_start: [480, 0.1, "square"],
       reload_done: [680, 0.05, "triangle"],
       pickup: [900, 0.06, "triangle"],
       death: [95, 0.22, "sawtooth"],
       kill_confirm: [1200, 0.08, "triangle"],
-      low_health: [60, 0.18, "sine"]
+      low_health: [60, 0.18, "sine"],
+      empty_click: [900, 0.02, "square"]
     };
 
     const [freq, duration, wave] = palette[name] || [220, 0.05, "sine"];

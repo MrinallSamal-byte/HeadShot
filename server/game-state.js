@@ -455,6 +455,7 @@ class GameState {
         kills: player.kills,
         deaths: player.deaths,
         damageDealt: player.damageDealt,
+        kothScore: player.kothScore,
         killStreak: player.killStreak,
         bestStreak: player.bestStreak,
         ping: player.ping,
@@ -626,10 +627,10 @@ class GameState {
     const claimedY = Number(payload.y);
     if (Number.isFinite(claimedX) && Number.isFinite(claimedY)) {
       const traveled = distance(player.x, player.y, claimedX, claimedY);
-      const maxAllowed = BASE_SPEED * 0.12 * 1.5;
-      if (traveled > maxAllowed * 2) {
-        player.x = this.selectSpawnPoint(token).x;
-        player.y = this.selectSpawnPoint(token).y;
+      const maxAllowed = BASE_SPEED * 0.6;
+      if (traveled > maxAllowed) {
+        player.x = Math.max(PLAYER_RADIUS, Math.min(this.map.width - PLAYER_RADIUS, claimedX));
+        player.y = Math.max(PLAYER_RADIUS, Math.min(this.map.height - PLAYER_RADIUS, claimedY));
       }
     }
 
@@ -784,6 +785,22 @@ class GameState {
     this.spawnPlayer(token);
   }
 
+  handleSwitchGun(token, gunId) {
+    const player = this.players.get(token);
+    const requested = Number(gunId);
+    if (!player || !player.alive || !Number.isInteger(requested) || requested < 1 || requested > 8) {
+      return;
+    }
+    const gun = getGunConfig(requested);
+    this.interruptReload(player);
+    player.gunId = gun.id;
+    this.resetAmmo(player);
+    const meta = this.room.players.get(token);
+    if (meta) {
+      meta.selectedGunId = gun.id;
+    }
+  }
+
   applyDamage(victim, rawDamage, attackerToken, gunId, hitPoint) {
     if (!victim || !victim.alive) {
       return;
@@ -900,7 +917,7 @@ class GameState {
       if (!player.alive || player.spectator) {
         continue;
       }
-      if (player.token === bullet.ownerToken || this.canDamageTarget(bullet.ownerToken, player.token)) {
+      if (this.canDamageTarget(bullet.ownerToken, player.token)) {
         const dist = distance(x, y, player.x, player.y);
         if (dist > bullet.splashRadius) {
           continue;
@@ -1171,6 +1188,9 @@ class GameState {
       while (this.hill.pointAccumulator >= 2) {
         this.hill.pointAccumulator -= 2;
         this.teamScores[contender] += 1;
+        for (const occupant of occupants) {
+          occupant.kothScore = (occupant.kothScore || 0) + 1;
+        }
       }
     }
   }

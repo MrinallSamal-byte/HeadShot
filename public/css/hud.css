@@ -67,6 +67,7 @@
 
 .bar-fill {
   height: 100%;
+  transition: width 0.25s ease-out;
 }
 
 .bar-fill.health { background: linear-gradient(90deg, #15803d, #00ff88); }
@@ -92,6 +93,37 @@
 .announcement.visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+.spectator-banner-wrap {
+  margin-top: 2.5rem;
+}
+
+.spectator-pill {
+  padding: 0.4rem 1rem;
+  background: rgba(10,10,15,0.8);
+  border: 1px solid rgba(255,184,0,0.5);
+  color: #ffb800;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+}
+
+.respawn-countdown-wrap {
+  margin-top: 5rem;
+}
+
+.respawn-pill {
+  font-size: 1.3rem;
+  padding: 0.6rem 1.4rem;
+  background: rgba(10,10,15,0.85);
+  border: 2px solid #ff3344;
+  color: #ff5d73;
+  animation: respawnPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes respawnPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 .timer-pill.warning {
@@ -135,6 +167,18 @@ tbody tr.blue {
 .podium-1 { background: rgba(250, 204, 21, 0.12); }
 .podium-2 { background: rgba(226, 232, 240, 0.08); }
 .podium-3 { background: rgba(249, 115, 22, 0.08); }
+
+.score-flash-red {
+  color: #ff8d97 !important;
+  text-shadow: 0 0 12px rgba(255,51,68,0.6);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.score-flash-blue {
+  color: #7dd3fc !important;
+  text-shadow: 0 0 12px rgba(0,162,255,0.6);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
 
 .chat-input-wrap {
   position: fixed;
@@ -189,6 +233,57 @@ tbody tr.blue {
 
 .leaderboard-winner {
   color: #facc15;
+}
+
+.kf-entry {
+  opacity: 0;
+  transform: translateX(-12px);
+  animation: kfSlide 0.2s ease forwards;
+}
+
+@keyframes kfSlide {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.joystick-zone {
+  position: fixed;
+  bottom: 0;
+  width: 50vw;
+  height: 45vh;
+  z-index: 90;
+  pointer-events: all;
+}
+
+.left-zone { left: 0; }
+.right-zone { right: 0; }
+
+.joystick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 184, 0, 0.5);
+  border: 2px solid #ffb800;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.fire-btn {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 51, 68, 0.7);
+  border: 3px solid #ff3344;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  pointer-events: all;
+  cursor: pointer;
 }
 
 @media (max-width: 720px) {

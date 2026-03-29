@@ -23,6 +23,18 @@
       <div id="announcement" class="announcement"></div>
     </div>
 
+    <div id="spectatorBanner" class="hud-block top-center spectator-banner-wrap" hidden>
+      <div class="spectator-pill">
+        SPECTATING <span id="specTargetName">—</span>
+        &nbsp;|&nbsp; <span id="specTargetHp">— HP</span>
+        &nbsp;|&nbsp; <span id="specTargetGun">—</span>
+      </div>
+    </div>
+
+    <div id="respawnCountdown" class="hud-block top-center respawn-countdown-wrap" hidden>
+      <div class="respawn-pill">RESPAWNING IN <span id="respawnSecs">3</span>s</div>
+    </div>
+
     <div class="hud-block top-right">
       <canvas id="minimap" width="180" height="180"></canvas>
       <div id="scoreBrief" class="brief-score">You: 0K / 0D</div>
@@ -101,6 +113,16 @@
 
   <div id="chatInputWrap" class="chat-input-wrap" hidden>
     <input id="chatInput" type="text" maxlength="140" autocomplete="off" placeholder="Type a message or prefix with [T] for team">
+  </div>
+
+  <div id="mobileControls" hidden>
+    <div id="joystickLeft" class="joystick-zone left-zone">
+      <div id="joystickLeftThumb" class="joystick-thumb"></div>
+    </div>
+    <div id="joystickRight" class="joystick-zone right-zone">
+      <div id="joystickRightThumb" class="joystick-thumb"></div>
+      <div id="fireBtn" class="fire-btn">🔴</div>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

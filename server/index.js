@@ -153,8 +153,12 @@ io.on("connection", (socket) => {
   }));
 
   socket.on("room:start", withRateLimit(socket, (_payload, ack) => {
-    roomManager.startRoom(socket.id);
-    ack?.({ ok: true });
+    try {
+      roomManager.startRoom(socket.id);
+      ack?.({ ok: true });
+    } catch (error) {
+      ack?.({ ok: false, message: error.message || "Cannot start match" });
+    }
   }));
 
   socket.on("room:playAgain", withRateLimit(socket, () => {
@@ -191,6 +195,11 @@ io.on("connection", (socket) => {
   socket.on("player:respawn", withRateLimit(socket, (payload) => {
     const context = roomManager.getRoomBySocket(socket.id);
     context?.room.gameState?.handleRespawn(context.player.token, payload?.gunId);
+  }));
+
+  socket.on("player:switchGun", withRateLimit(socket, (payload) => {
+    const context = roomManager.getRoomBySocket(socket.id);
+    context?.room.gameState?.handleSwitchGun(context.player.token, payload?.gunId);
   }));
 
   socket.on("chat:send", withRateLimit(socket, (payload) => {

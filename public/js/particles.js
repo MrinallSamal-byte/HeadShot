@@ -61,6 +61,20 @@ export class ParticlePool {
     });
   }
 
+  addKillConfirm(screenX, screenY) {
+    this.items.push({
+      type: "killConfirm",
+      x: screenX,
+      y: screenY,
+      vx: 0,
+      vy: -50,
+      radius: 0,
+      life: 1.2,
+      maxLife: 1.2,
+      color: "#00ff88"
+    });
+  }
+
   update(delta) {
     for (const particle of this.items) {
       particle.life -= delta;
@@ -84,9 +98,24 @@ export class ParticlePool {
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = particle.color;
-        ctx.font = "bold 18px 'Share Tech Mono', monospace";
+        ctx.font = `bold ${14 + Math.min(particle.value / 10, 12)}px 'Share Tech Mono', monospace`;
         ctx.textAlign = "center";
-        ctx.fillText(`${particle.value}`, x, y);
+        ctx.shadowColor = "rgba(0,0,0,0.8)";
+        ctx.shadowBlur = 4;
+        ctx.fillText(`-${particle.value}`, x, y);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        continue;
+      }
+      if (particle.type === "killConfirm") {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, alpha * 1.4);
+        ctx.fillStyle = "#00ff88";
+        ctx.font = "bold 22px 'Share Tech Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "#00ff88";
+        ctx.shadowBlur = 8;
+        ctx.fillText("+1 KILL", particle.x, particle.y);
         ctx.restore();
         continue;
       }

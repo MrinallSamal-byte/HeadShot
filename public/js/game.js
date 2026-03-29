@@ -21,10 +21,19 @@ const session = loadSession();
 if (!session?.roomCode || !session?.playerToken) {
   window.location.href = "/";
 }
+const SELF_ID = session.playerToken.slice(-8);
+const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
 const socket = createSocket();
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const spectatorBanner = document.getElementById("spectatorBanner");
+const specTargetName = document.getElementById("specTargetName");
+const specTargetHp = document.getElementById("specTargetHp");
+const specTargetGun = document.getElementById("specTargetGun");
+const respawnCountdown = document.getElementById("respawnCountdown");
+const respawnSecs = document.getElementById("respawnSecs");
+const mobileControls = document.getElementById("mobileControls");
 
 const hud = new HUD();
 const settings = {
@@ -75,7 +84,10 @@ const localRuntime = {
   angle: 0,
   lastDamageAt: 0,
   reloadStartAt: 0,
+  reloading: false,
   lastFireAt: 0,
+  lastHeartbeatAt: 0,
+  hitMarkerAt: 0,
   lastPing: 0,
   alive: false,
   spectatingToken: null
@@ -98,16 +110,16 @@ function resizeCanvas() {
   canvas.height = window.innerHeight;
 }
 
-function getSelfId() {
-  return session.playerId || session.playerToken.slice(-8);
-}
-
 function getLocalPlayer() {
   const serverPlayer = latestState.players.find((player) => player.token === session.playerToken);
   if (!serverPlayer) return null;
 
   if (serverPlayer.reloading && !localRuntime.reloading) {
-    localRuntime.reloadStartAt = Date.now();
+    localRuntime.reloadStartAt = serverPlayer.reloadEndAt - getGun(serverPlayer.gunId).reloadTime * 1000;
+    sounds.play("reload", { x: localRuntime.x, y: localRuntime.y });
+  }
+  if (!serverPlayer.reloading && localRuntime.reloading) {
+    sounds.play("reload_done", { x: localRuntime.x, y: localRuntime.y });
   }
   if (!serverPlayer.reloading) {
     localRuntime.reloadStartAt = 0;
@@ -142,6 +154,9 @@ function getRows() {
   return latestState.players
     .filter((player) => !player.spectator)
     .sort((a, b) => {
+      if (latestState.mode === "koth" && b.kothScore !== a.kothScore) {
+        return b.kothScore - a.kothScore;
+      }
       if (b.kills !== a.kills) return b.kills - a.kills;
       if (b.damageDealt !== a.damageDealt) return b.damageDealt - a.damageDealt;
       return a.deaths - b.deaths;
@@ -155,7 +170,8 @@ function getRows() {
       damage: player.damageDealt,
       kd: player.deaths ? (player.kills / player.deaths).toFixed(2) : player.kills.toFixed(2),
       ping: player.ping,
-      team: player.team
+      team: player.team,
+      hillScore: player.kothScore || 0
     }));
 }
 
@@ -272,18 +288,6 @@ function drawPickups() {
   }
 }
 
-function drawSpectatingBanner(target) {
-  if (!target) return;
-  ctx.save();
-  ctx.fillStyle = "rgba(10,10,15,0.68)";
-  ctx.fillRect(canvas.width / 2 - 160, 26, 320, 32);
-  ctx.fillStyle = "#ffb800";
-  ctx.font = "16px 'Share Tech Mono', monospace";
-  ctx.textAlign = "center";
-  ctx.fillText(`SPECTATING: ${target.name}`, canvas.width / 2, 48);
-  ctx.restore();
-}
-
 function drawCrosshair(localPlayer) {
   const gun = getGun(localPlayer?.gunId || profile.selectedGunId || 1);
   const moving = input.up || input.down || input.left || input.right;
@@ -319,6 +323,17 @@ function drawCrosshair(localPlayer) {
     ctx.lineTo(0, -spread / 2);
     ctx.moveTo(0, spread);
     ctx.lineTo(0, spread / 2);
+    ctx.stroke();
+  }
+  const hitAge = performance.now() - (localRuntime.hitMarkerAt || 0);
+  if (hitAge < 120) {
+    ctx.strokeStyle = `rgba(255,51,68,${1 - hitAge / 120})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.lineTo(6, 6);
+    ctx.moveTo(6, -6);
+    ctx.lineTo(-6, 6);
     ctx.stroke();
   }
   ctx.restore();
@@ -379,6 +394,13 @@ function tryFire(localPlayer) {
   }
 
   const gun = getGun(localPlayer.gunId);
+  if (localPlayer.ammoInMag <= 0 && !localPlayer.reloading) {
+    sounds.play("empty_click", { x: localRuntime.x, y: localRuntime.y });
+    return;
+  }
+  if (localPlayer.ammoInMag <= 0 && localPlayer.reloading) {
+    return;
+  }
   const now = performance.now();
   if (now - localRuntime.lastFireAt < 60000 / gun.rpm) {
     return;
@@ -409,8 +431,9 @@ function tryFire(localPlayer) {
 }
 
 function renderWorld(localPlayer, spectatingTarget) {
+  const scoped = localPlayer?.gunId === 4 && (input.scoped || mouse.right) && localPlayer?.alive;
   const target = localPlayer?.alive ? localPlayer : spectatingTarget || { x: mapRenderer.data.width / 2, y: mapRenderer.data.height / 2 };
-  updateCamera(target, localPlayer?.gunId === 4 && (input.scoped || mouse.right) && localPlayer?.alive);
+  updateCamera(target, scoped);
   sounds.setListener(target.x, target.y);
 
   const viewWidth = canvas.width / camera.zoom;
@@ -421,6 +444,33 @@ function renderWorld(localPlayer, spectatingTarget) {
   ctx.scale(camera.zoom, camera.zoom);
   mapRenderer.drawFloor(ctx, camera, viewWidth, viewHeight);
   mapRenderer.drawHill(ctx, camera, latestState.hill);
+  if (mapRenderer.data.spawns) {
+    const allSpawns = latestState.mode === "ffa"
+      ? mapRenderer.data.spawns.all || []
+      : [
+          ...(mapRenderer.data.spawns.red || []).map((spawn) => ({ ...spawn, team: "red" })),
+          ...(mapRenderer.data.spawns.blue || []).map((spawn) => ({ ...spawn, team: "blue" }))
+        ];
+    for (const spawn of allSpawns) {
+      const sx = spawn.x - camera.x;
+      const sy = spawn.y - camera.y;
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = spawn.team === "red" ? "#ff3344" : spawn.team === "blue" ? "#00a2ff" : "#00ff88";
+      ctx.beginPath();
+      ctx.arc(sx, sy, 48, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 48, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
   drawPickups();
   mapRenderer.drawWalls(ctx, camera, latestState.destructibles);
 
@@ -442,10 +492,38 @@ function renderWorld(localPlayer, spectatingTarget) {
   particles.draw(ctx, camera);
   ctx.restore();
 
-  if (!localPlayer?.alive) {
-    drawSpectatingBanner(spectatingTarget);
-    ctx.fillStyle = "rgba(10,10,15,0.55)";
+  if (scoped) {
+    const grad = ctx.createRadialGradient(
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width * 0.18,
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width * 0.62
+    );
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(1, "rgba(0,0,0,0.88)");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.stroke();
+  }
+
+  if (!localPlayer?.alive) {
+    if (!spectatingTarget) {
+      ctx.fillStyle = "rgba(10,10,15,0.55)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
   }
 
   drawCrosshair(localPlayer || { gunId: profile.selectedGunId });
@@ -476,6 +554,13 @@ function renderLoop(time) {
   if (localPlayer) {
     const gun = getGun(localPlayer.gunId);
     hud.updatePlayer(localPlayer, gun, latestState.remaining, latestState.teamScores, latestState.mode);
+    if (localPlayer.alive && localPlayer.hp <= 25 && localPlayer.hp > 0) {
+      const now = performance.now();
+      if (!localRuntime.lastHeartbeatAt || now - localRuntime.lastHeartbeatAt > 900) {
+        localRuntime.lastHeartbeatAt = now;
+        sounds.play("low_health", { x: localRuntime.x, y: localRuntime.y });
+      }
+    }
   }
 
   hud.updatePerf(settings.showFps ? fps : 0, settings.showPing ? localRuntime.lastPing : 0);
@@ -489,6 +574,23 @@ function renderLoop(time) {
   if (deathState) {
     const remaining = Math.max(0, Math.ceil((deathState.unlockAt - Date.now()) / 1000));
     ui.updateDeathCountdown(remaining, Date.now() >= deathState.unlockAt);
+  }
+
+  if (deathState && !localPlayer?.alive) {
+    const secs = Math.max(0, Math.ceil((deathState.unlockAt - Date.now()) / 1000));
+    respawnCountdown.hidden = false;
+    respawnSecs.textContent = secs;
+  } else {
+    respawnCountdown.hidden = true;
+  }
+
+  if (!localPlayer?.alive && spectatingTarget) {
+    spectatorBanner.hidden = false;
+    specTargetName.textContent = spectatingTarget.name;
+    specTargetHp.textContent = `${Math.round(spectatingTarget.hp)} HP`;
+    specTargetGun.textContent = getGun(spectatingTarget.gunId).name;
+  } else {
+    spectatorBanner.hidden = true;
   }
 
   requestAnimationFrame(renderLoop);
@@ -555,6 +657,103 @@ function bindInput() {
     mouse.down = false;
     mouse.right = false;
   });
+  if (isTouchDevice) {
+    mobileControls.hidden = false;
+    const leftZone = document.getElementById("joystickLeft");
+    const leftThumb = document.getElementById("joystickLeftThumb");
+    const rightZone = document.getElementById("joystickRight");
+    const rightThumb = document.getElementById("joystickRightThumb");
+    const fireBtn = document.getElementById("fireBtn");
+    let leftOrigin = null;
+    let rightOrigin = null;
+    const DEAD_ZONE = 12;
+    const MAX_RADIUS = 60;
+
+    leftZone.addEventListener("touchstart", (event) => {
+      const touch = event.changedTouches[0];
+      const rect = leftZone.getBoundingClientRect();
+      leftOrigin = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+      leftThumb.style.left = `${touch.clientX - rect.left}px`;
+      leftThumb.style.top = `${touch.clientY - rect.top}px`;
+      event.preventDefault();
+    }, { passive: false });
+
+    leftZone.addEventListener("touchmove", (event) => {
+      if (!leftOrigin) return;
+      const touch = Array.from(event.changedTouches).find((entry) => entry.identifier === leftOrigin.id);
+      if (!touch) return;
+      const dx = touch.clientX - leftOrigin.x;
+      const dy = touch.clientY - leftOrigin.y;
+      const dist = Math.hypot(dx, dy);
+      const clampedDist = Math.min(dist, MAX_RADIUS);
+      const nx = dist > DEAD_ZONE ? dx / dist : 0;
+      const ny = dist > DEAD_ZONE ? dy / dist : 0;
+      input.left = nx < -0.3;
+      input.right = nx > 0.3;
+      input.up = ny < -0.3;
+      input.down = ny > 0.3;
+      const rect = leftZone.getBoundingClientRect();
+      leftThumb.style.left = `${leftOrigin.x - rect.left + nx * clampedDist}px`;
+      leftThumb.style.top = `${leftOrigin.y - rect.top + ny * clampedDist}px`;
+      event.preventDefault();
+    }, { passive: false });
+
+    leftZone.addEventListener("touchend", (event) => {
+      input.left = false;
+      input.right = false;
+      input.up = false;
+      input.down = false;
+      leftOrigin = null;
+      leftThumb.style.left = "50%";
+      leftThumb.style.top = "50%";
+      event.preventDefault();
+    }, { passive: false });
+
+    rightZone.addEventListener("touchstart", (event) => {
+      const touch = event.changedTouches[0];
+      const rect = rightZone.getBoundingClientRect();
+      rightOrigin = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+      rightThumb.style.left = `${touch.clientX - rect.left}px`;
+      rightThumb.style.top = `${touch.clientY - rect.top}px`;
+      mouse.x = touch.clientX;
+      mouse.y = touch.clientY;
+      event.preventDefault();
+    }, { passive: false });
+
+    rightZone.addEventListener("touchmove", (event) => {
+      if (!rightOrigin) return;
+      const touch = Array.from(event.changedTouches).find((entry) => entry.identifier === rightOrigin.id);
+      if (!touch) return;
+      const dx = touch.clientX - rightOrigin.x;
+      const dy = touch.clientY - rightOrigin.y;
+      const dist = Math.hypot(dx, dy);
+      const clampedDist = Math.min(dist, MAX_RADIUS);
+      const nx = dist > DEAD_ZONE ? dx / dist : 0;
+      const ny = dist > DEAD_ZONE ? dy / dist : 0;
+      const rect = rightZone.getBoundingClientRect();
+      rightThumb.style.left = `${rightOrigin.x - rect.left + nx * clampedDist}px`;
+      rightThumb.style.top = `${rightOrigin.y - rect.top + ny * clampedDist}px`;
+      mouse.x = touch.clientX;
+      mouse.y = touch.clientY;
+      event.preventDefault();
+    }, { passive: false });
+
+    rightZone.addEventListener("touchend", (event) => {
+      rightOrigin = null;
+      rightThumb.style.left = "50%";
+      rightThumb.style.top = "50%";
+      event.preventDefault();
+    }, { passive: false });
+
+    fireBtn.addEventListener("touchstart", (event) => {
+      mouse.down = true;
+      event.preventDefault();
+    }, { passive: false });
+    fireBtn.addEventListener("touchend", (event) => {
+      mouse.down = false;
+      event.preventDefault();
+    }, { passive: false });
+  }
   window.addEventListener("keydown", (event) => {
     if (ui.chatInputWrap.hidden === false && event.key !== "Escape") {
       return;
@@ -578,7 +777,25 @@ function bindInput() {
         break;
       case "r":
         socket.emit("player:reload");
+        sounds.play("reload_start", { x: localRuntime.x, y: localRuntime.y });
         break;
+      case "1":
+      case "2":
+      case "3":
+      case "4":
+      case "5":
+      case "6":
+      case "7":
+      case "8": {
+        const gunId = Number(event.key);
+        const localPlayer = getLocalPlayer();
+        if (localPlayer?.alive && gunId !== localPlayer.gunId && ui.settingsModal.hidden === true) {
+          profile.selectedGunId = gunId;
+          saveProfile(profile);
+          socket.emit("player:switchGun", { gunId });
+        }
+        break;
+      }
       case "z":
         input.scoped = true;
         break;
@@ -696,18 +913,27 @@ function bindSocket() {
     }
   });
 
-  socket.on("player:hit", ({ victimId, damage, x, y }) => {
+  socket.on("player:hit", ({ victimId, damage, x, y, killerId }) => {
     particles.addDamageNumber(x, y, damage);
-    if (victimId === getSelfId()) {
+    if (victimId === SELF_ID) {
       localRuntime.lastDamageAt = Date.now();
+    } else if (killerId === SELF_ID) {
+      localRuntime.hitMarkerAt = performance.now();
     }
   });
 
   socket.on("player:killed", (payload) => {
-    if (payload.killerId === getSelfId()) {
+    if (payload.killerId === SELF_ID) {
+      localRuntime.hitMarkerAt = performance.now();
       sounds.play("kill_confirm");
+      const killedSprite = playerSprites.get(payload.victimId);
+      if (killedSprite) {
+        const screenX = (killedSprite.drawX - camera.x) * camera.zoom;
+        const screenY = (killedSprite.drawY - camera.y) * camera.zoom - 60;
+        particles.addKillConfirm(screenX, screenY);
+      }
     }
-    if (payload.victimId === getSelfId()) {
+    if (payload.victimId === SELF_ID) {
       localRuntime.spectatingToken = latestState.players.find((player) => player.id === payload.killerId)?.token || null;
       openDeathScreen(payload);
       sounds.play("death");
@@ -715,7 +941,7 @@ function bindSocket() {
   });
 
   socket.on("player:spawned", ({ playerId }) => {
-    if (playerId === getSelfId()) {
+    if (playerId === SELF_ID) {
       deathState = null;
       ui.hideDeathScreen();
     }
@@ -741,7 +967,7 @@ function bindSocket() {
   socket.on("game:end", (result) => {
     const modal = document.getElementById("leaderboardModal");
     modal.hidden = false;
-    renderLeaderboard(modal, result, session.playerToken);
+    renderLeaderboard(modal, result, session.playerToken, getCurrentTeam());
     document.getElementById("playAgainBtn").addEventListener("click", () => {
       modal.hidden = true;
       socket.emit("room:playAgain");
