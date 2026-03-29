@@ -1,0 +1,16 @@
+{
+  "name": "headshot",
+  "version": "1.0.0",
+  "description": "Browser-based multiplayer 2.5D top-down shooter built with Node.js, Socket.IO, HTML5 Canvas, and vanilla JS.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

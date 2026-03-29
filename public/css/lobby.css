@@ -1,0 +1,146 @@
+.landing-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at top left, rgba(0, 255, 136, 0.09), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(255, 184, 0, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(4, 6, 12, 0.98), rgba(10, 10, 15, 1));
+}
+
+.landing-panel,
+.lobby-panel {
+  width: min(1200px, 100%);
+  padding: 1.5rem;
+}
+
+.brand-block h1 {
+  margin: 0.15rem 0 0.5rem;
+  font-size: clamp(3rem, 10vw, 6rem);
+  line-height: 0.9;
+  letter-spacing: 0.12em;
+}
+
+.subcopy {
+  max-width: 42rem;
+  color: #cbd5e1;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.landing-actions,
+.lobby-actions,
+.lobby-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.color-picker {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.color-swatch.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 184, 0, 0.3);
+}
+
+.lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.lobby-header h2 {
+  margin: 0.35rem 0 0;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  letter-spacing: 0.15em;
+}
+
+.lobby-columns {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1rem;
+}
+
+.inset {
+  padding: 1rem;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.team-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.player-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.player-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.7rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.player-row .status-pill {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  background: rgba(255, 184, 0, 0.14);
+}
+
+.player-row button {
+  padding: 0.4rem 0.55rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+@media (max-width: 960px) {
+  .lobby-columns,
+  .team-columns {
+    grid-template-columns: 1fr;
+  }
+}

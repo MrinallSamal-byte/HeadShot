@@ -1,0 +1,205 @@
+.game-body,
+#gameCanvas {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.game-body {
+  cursor: none;
+}
+
+#gameCanvas {
+  display: block;
+  background: #0a0a0f;
+}
+
+#hudLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-block {
+  position: absolute;
+  padding: 1rem;
+}
+
+.top-left { top: 0; left: 0; }
+.top-center { top: 0; left: 50%; transform: translateX(-50%); text-align: center; }
+.top-right { top: 0; right: 0; text-align: right; }
+.bottom-left { bottom: 0; left: 0; max-width: 360px; }
+.bottom-right { bottom: 0; right: 0; min-width: 240px; text-align: right; }
+
+.kill-feed,
+.chat-log {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.kill-feed div,
+.chat-log div,
+.timer-pill,
+.brief-score,
+.perf-pill,
+.bar-wrap,
+.gun-title,
+.ammo-text {
+  padding: 0.45rem 0.65rem;
+  background: rgba(10, 10, 15, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#minimap {
+  display: block;
+  margin-left: auto;
+  background: rgba(10, 10, 15, 0.92);
+  border: 2px solid rgba(255, 184, 0, 0.72);
+}
+
+.bar {
+  margin-top: 0.3rem;
+  width: 220px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+}
+
+.bar-fill.health { background: linear-gradient(90deg, #15803d, #00ff88); }
+.bar-fill.armor { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+.bar-fill.ammo { background: linear-gradient(90deg, #b45309, #ffb800); }
+.bar-fill.reload { background: linear-gradient(90deg, #f8fafc, #94a3b8); }
+
+.regen-label,
+.hint-line {
+  margin-top: 0.45rem;
+  color: #86efac;
+}
+
+.announcement {
+  margin-top: 0.8rem;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  text-shadow: 0 0 18px rgba(255, 184, 0, 0.38);
+  font-size: 1.6rem;
+}
+
+.announcement.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.timer-pill.warning {
+  color: #ffb800;
+}
+
+.timer-pill.critical {
+  color: #ff3344;
+}
+
+.scoreboard .modal-card,
+.leaderboard-card,
+.settings-card {
+  max-width: 980px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+tbody tr.self {
+  background: rgba(255, 184, 0, 0.12);
+}
+
+tbody tr.red {
+  color: #ff8d97;
+}
+
+tbody tr.blue {
+  color: #7dd3fc;
+}
+
+.podium-1 { background: rgba(250, 204, 21, 0.12); }
+.podium-2 { background: rgba(226, 232, 240, 0.08); }
+.podium-3 { background: rgba(249, 115, 22, 0.08); }
+
+.chat-input-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  width: min(720px, 90vw);
+  z-index: 120;
+}
+
+.chat-input-wrap input {
+  background: rgba(10, 10, 15, 0.95);
+}
+
+.death-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.gun-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.65rem;
+}
+
+.gun-card {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.gun-card.selected {
+  border-color: rgba(255, 184, 0, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(255, 184, 0, 0.45);
+}
+
+.death-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.leaderboard-awards {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.leaderboard-winner {
+  color: #facc15;
+}
+
+@media (max-width: 720px) {
+  .top-right,
+  .bottom-right,
+  .bottom-left {
+    max-width: none;
+    min-width: 0;
+  }
+
+  .bar {
+    width: 180px;
+  }
+}

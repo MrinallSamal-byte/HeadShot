@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEADSHOT :: Match</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/hud.css">
+</head>
+<body class="game-body">
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="hudLayer">
+    <div class="hud-block top-left">
+      <div id="killFeed" class="kill-feed"></div>
+    </div>
+
+    <div class="hud-block top-center">
+      <div id="matchTimer" class="timer-pill">⏱ 00:00</div>
+      <div id="announcement" class="announcement"></div>
+    </div>
+
+    <div class="hud-block top-right">
+      <canvas id="minimap" width="180" height="180"></canvas>
+      <div id="scoreBrief" class="brief-score">You: 0K / 0D</div>
+      <div id="fpsPing" class="perf-pill">0 FPS | 0 ms</div>
+    </div>
+
+    <div class="hud-block bottom-left">
+      <div class="bar-wrap">
+        <div class="bar-label" id="healthText">100 HP</div>
+        <div class="bar"><div id="healthFill" class="bar-fill health"></div></div>
+      </div>
+      <div class="bar-wrap" id="armorWrap">
+        <div class="bar-label" id="armorText">0 ARM</div>
+        <div class="bar"><div id="armorFill" class="bar-fill armor"></div></div>
+      </div>
+      <div id="regenLabel" class="regen-label"></div>
+      <div id="chatLog" class="chat-log"></div>
+    </div>
+
+    <div class="hud-block bottom-right">
+      <div id="gunName" class="gun-title">Assault Rifle</div>
+      <div class="bar"><div id="ammoFill" class="bar-fill ammo"></div></div>
+      <div id="ammoText" class="ammo-text">30/120</div>
+      <div id="reloadWrap" class="bar-wrap" hidden>
+        <div class="bar"><div id="reloadFill" class="bar-fill reload"></div></div>
+      </div>
+      <div class="hint-line">Press R to reload</div>
+    </div>
+  </div>
+
+  <div id="scoreboard" class="overlay-card scoreboard" hidden>
+    <div class="modal-card">
+      <h2>Scoreboard</h2>
+      <table>
+        <thead>
+          <tr><th>Rank</th><th>Player</th><th>K</th><th>D</th><th>Damage</th><th>K/D</th><th>Ping</th></tr>
+        </thead>
+        <tbody id="scoreboardBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="deathModal" class="overlay-card" hidden>
+    <div id="deathBody" class="modal-card"></div>
+  </div>
+
+  <div id="leaderboardModal" class="overlay-card" hidden></div>
+
+  <div id="settingsModal" class="overlay-card" hidden>
+    <div class="modal-card settings-card">
+      <h2>Settings</h2>
+      <label>Volume <input id="settingsVolume" type="range" min="0" max="1" step="0.05"></label>
+      <label>Sensitivity <input id="settingsSensitivity" type="range" min="0.5" max="2" step="0.1"></label>
+      <label>Show FPS <input id="settingsFps" type="checkbox"></label>
+      <label>Show Ping <input id="settingsPing" type="checkbox"></label>
+      <label>Crosshair
+        <select id="settingsCrosshair">
+          <option value="+">+</option>
+          <option value="x">x</option>
+          <option value="dot">·</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button id="resumeBtn" class="primary">Resume</button>
+        <button id="quitMatchBtn">Quit Match</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="connectionOverlay" class="overlay-card" hidden>
+    <div class="modal-card">
+      <h2>Connection</h2>
+      <p id="connectionText">Reconnecting...</p>
+    </div>
+  </div>
+
+  <div id="chatInputWrap" class="chat-input-wrap" hidden>
+    <input id="chatInput" type="text" maxlength="140" autocomplete="off" placeholder="Type a message or prefix with [T] for team">
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/game.js"></script>
+</body>
+</html>

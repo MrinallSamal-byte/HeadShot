@@ -1,0 +1,147 @@
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #0a0a0f;
+  color: #f8fafc;
+  font-family: "Share Tech Mono", monospace;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+body.scanlines::before,
+body.game-body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(rgba(255, 255, 255, 0.03) 50%, rgba(0, 0, 0, 0.08) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.25;
+  z-index: 50;
+}
+
+.panel,
+.modal-card,
+.overlay-card {
+  border: 1px solid rgba(255, 184, 0, 0.32);
+  background: rgba(10, 10, 15, 0.88);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(16px);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button,
+.button-like {
+  border: 1px solid rgba(255, 184, 0, 0.4);
+  background: rgba(24, 24, 31, 0.92);
+  color: #f8fafc;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+button.primary {
+  background: linear-gradient(135deg, rgba(255, 184, 0, 0.24), rgba(255, 184, 0, 0.06));
+  border-color: rgba(255, 184, 0, 0.8);
+}
+
+input,
+select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.78);
+  color: #f8fafc;
+  padding: 0.75rem 0.85rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  color: #cbd5e1;
+}
+
+.modal-shell,
+.overlay-card {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(3, 7, 18, 0.55);
+  z-index: 100;
+}
+
+.modal-card {
+  width: min(900px, 92vw);
+  padding: 1.2rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.eyebrow {
+  color: #ffb800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.toast-host {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.6rem;
+  z-index: 200;
+}
+
+.toast {
+  padding: 0.85rem 1rem;
+  border-left: 3px solid #ffb800;
+  background: rgba(15, 23, 42, 0.94);
+  transform: translateX(16px);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.toast.visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.toast.error {
+  border-color: #ff3344;
+}
+
+.hint {
+  margin-top: 1rem;
+  color: #94a3b8;
+}
+
+.motd-banner {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  color: #facc15;
+  background: rgba(255, 184, 0, 0.08);
+  border: 1px solid rgba(255, 184, 0, 0.16);
+}
+
+.plain-list {
+  padding-left: 1.25rem;
+  line-height: 1.7;
+}
